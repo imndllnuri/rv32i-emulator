@@ -1,5 +1,6 @@
 import os
 from .find_dialog import FindDialog
+from .replace_dialog import ReplaceDialog
 from PyQt5 import uic
 from PyQt5.QtWidgets import QFileDialog, QMainWindow, QStatusBar, QDialog
 from PyQt5.QtGui import QFont
@@ -162,12 +163,13 @@ class MainWindow(QMainWindow):
 
     def find_text(self):
         self.statusbar.showMessage("Find triggered", 1000)
-        dialog = FindDialog(self.editor, self)
-        dialog.exec()
-        # TODO: open find dialog
+        find_dialog = FindDialog(self.editor, self)
+        find_dialog.exec()
 
     def replace(self):
         self.statusbar.showMessage("Replace triggered", 1000)
+        replace_dialog = ReplaceDialog(self.editor, self)
+        replace_dialog.exec()
         # TODO: open replace dialog
 
     def select_all(self):
