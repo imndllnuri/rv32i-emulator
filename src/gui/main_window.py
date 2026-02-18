@@ -1,6 +1,7 @@
 import os
+from .find_dialog import FindDialog
 from PyQt5 import uic
-from PyQt5.QtWidgets import QFileDialog, QMainWindow, QStatusBar
+from PyQt5.QtWidgets import QFileDialog, QMainWindow, QStatusBar, QDialog
 from PyQt5.QtGui import QFont
 
 UI_FILE = os.path.join(os.path.dirname(__file__), 'main_window.ui')
@@ -136,7 +137,7 @@ class MainWindow(QMainWindow):
             self.statusbar.showMessage("Save cancelled.", 2000)
 
     def exit_app(self):
-        self.statusbar.showMessage("Exit triggered", 1000)
+        self.statusbar.showMessage("Exit triggered :(", 1000)
         self.close()
 
     def undo(self):
@@ -161,6 +162,8 @@ class MainWindow(QMainWindow):
 
     def find_text(self):
         self.statusbar.showMessage("Find triggered", 1000)
+        dialog = FindDialog(self.editor, self)
+        dialog.exec()
         # TODO: open find dialog
 
     def replace(self):
