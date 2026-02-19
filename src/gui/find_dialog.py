@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QDialog, QTextEdit
 from PyQt5.QtGui import QTextCursor, QTextDocument
 from PyQt5.QtCore import Qt
 
-UI_FILE = os.path.join(os.path.dirname(__file__), 'find_dialog.ui')
+UI_FILE = os.path.join(os.path.dirname(__file__), './ui/find_dialog.ui')
 
 class FindDialog(QDialog):
     def __init__(self, text_edit, parent=None):
