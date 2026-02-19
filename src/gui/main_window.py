@@ -5,7 +5,7 @@ from PyQt5 import uic
 from PyQt5.QtWidgets import QFileDialog, QMainWindow, QStatusBar, QDialog
 from PyQt5.QtGui import QFont
 
-UI_FILE = os.path.join(os.path.dirname(__file__), 'main_window.ui')
+UI_FILE = os.path.join(os.path.dirname(__file__), './ui/main_window.ui')
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -63,7 +63,7 @@ class MainWindow(QMainWindow):
     def new_file(self):
         self.statusbar.showMessage("New file triggered", 1000)
         self.editor.clear()
-        self.setWindowTitle("easy68k-linux")
+        self.setWindowTitle("emulator-linux")
         self.editor.document().setModified(False)
 
     # TODO: implement multiple files opening
@@ -88,7 +88,7 @@ class MainWindow(QMainWindow):
                     content = f.read()
                 self.editor.setPlainText(content)
                 self.current_file = file_path
-                self.setWindowTitle(f"easy68k-linux – {file_path}")
+                self.setWindowTitle(f"emulator-linux – {file_path}")
                 self.statusbar.showMessage(f"Opened {file_path}", 3000)
                 self.editor.document().setModified(False)
             except Exception as e:
@@ -129,7 +129,7 @@ class MainWindow(QMainWindow):
             try:
                 with open(file_path, 'w') as f:
                     f.write(self.editor.toPlainText())
-                self.setWindowTitle(f"easy68k-linux – {file_path}")
+                self.setWindowTitle(f"emulator-linux – {file_path}")
                 self.statusbar.showMessage(f"Saved as {file_path}", 3000)
                 self.editor.document().setModified(False)
             except Exception as e:

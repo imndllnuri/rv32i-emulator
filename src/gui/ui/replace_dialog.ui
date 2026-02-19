@@ -161,7 +161,7 @@
    <item row="2" column="0" colspan="2">
     <layout class="QHBoxLayout" name="buttonLayout">
      <item>
-      <widget class="QLabel" name="statusLabelRD">
+      <widget class="QLabel" name="statusLabel">
        <property name="enabled">
         <bool>true</bool>
        </property>
