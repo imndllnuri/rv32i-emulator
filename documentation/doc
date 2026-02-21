@@ -1,59 +1,30 @@
-riscv-toolchain/
+emulator/
 ├── CMakeLists.txt                 # Top-level CMake for C++ parts
 ├── README.md
 ├── .gitignore
 ├── core/                          # C++ emulator core
 │   ├── include/
-│   │   └── riscv/
-│   │       ├── cpu.hpp            # CPU class definition
-│   │       ├── memory.hpp         # Memory interface
-│   │       ├── types.hpp          # Common types, instruction unions
-│   │       └── decoder.hpp        # Instruction decoding helpers
+│   │   ├── cpu.hpp            # CPU class definition
+│   │   ├── memory.hpp         # Memory interface
+│   │   ├── opcode.hpp          # Common types, instruction unions
+│   │   ├── common.hpp          # Common types, instruction unions
+│   │   └── assembler.hpp        # Instruction decoding helpers
 │   ├── src/
-│   │   ├── cpu.cpp
-│   │   ├── memory.cpp
-│   │   ├── decoder.cpp
-│   │   └── CMakeLists.txt         # Builds core as static/shared library
+│   │   ├── cpu.cc
+│   │   ├── memory.cc
+│   │   ├── flags.cc
+│   │   ├── execute.cc
+│   │   ├── decode.cc
+│   │   ├── opcode_table.cc
+│   │   ├── fetch.cc
 │   └── tests/                     # Unit tests for core (Catch2/GoogleTest)
 │       ├── test_cpu.cpp
 │       └── CMakeLists.txt
 ├── assembler/                      # C++ assembler (two-pass)
-│   ├── include/
-│   │   └── riscv/
-│   │       ├── assembler.hpp
-│   │       ├── symbol_table.hpp
-│   │       └── instruction_table.hpp
-│   ├── src/
-│   │   ├── assembler.cpp
-│   │   ├── symbol_table.cpp
-│   │   ├── main.cpp               # CLI assembler tool
-│   │   └── CMakeLists.txt
-│   └── tests/
-│       ├── test_assembler.cpp
-│       └── CMakeLists.txt
 ├── python/                         # Python GUI and bindings
 │   ├── riscv_gui/
 │   │   ├── __init__.py
 │   │   ├── main_window.py          # PyQt main window
-│   │   ├── editor_widget.py        # Code editor with syntax highlighting
-│   │   ├── register_view.py        # Register table display
-│   │   ├── memory_view.py          # Memory hex viewer
-│   │   ├── control_panel.py        # Run/Step/Reset buttons
-│   │   ├── emulator_bridge.py      # Python bindings to core library
-│   │   └── resources/              # Icons, stylesheets, etc.
-│   ├── setup.py                     # Python package installation
-│   ├── requirements.txt             # PyQt5, pybind11, etc.
-│   └── run_gui.py                   # Entry point script
-├── bindings/                        # pybind11 wrapper for core
-│   ├── CMakeLists.txt
-│   └── pycore.cpp                   # pybind11 module definition
-├── examples/                         # Sample assembly programs
-│   ├── hello.s
-│   ├── fibonacci.s
-│   └── README.md
-├── docs/                             # Documentation
-│   ├── architecture.md
-│   └── user_guide.md
-└── scripts/                          # Helper scripts (e.g., build, test)
-    ├── build_core.sh
-    └── run_tests.sh
+│   │   ├── find_dialog.py 
+│   │   ├── replace_dialog.py        # Register table display
+│   │   └── main.py             

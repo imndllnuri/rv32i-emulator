@@ -80,12 +80,13 @@ uint32_t CPU::execute_r_type(const DecodedInstruction &d_instr,
     if (d_instr.funct7 == funct7::BASE) {
       // add instruction
       rd = rs1 + rs2;
-    } else if (d_instr.funct7 == funct7::SUB) {
+    } else if (d_instr.funct7 == funct7::SUB_SRA) {
       // sub instruction
       rd = rs1 - rs2;
-    } else {
-      // for now these are illegal instructions, we'll implement raising
-      // exceptions
+
+    } else { // for now these are illegal instructions, we'll implement raising
+             // exceptions
+
       return current_pc + 4;
     }
     break;
@@ -94,8 +95,58 @@ uint32_t CPU::execute_r_type(const DecodedInstruction &d_instr,
       rd = rs1 ^ rs2;
     } else {
       std::cout << "Illegal instruction. R-Type, XOR" << std::endl;
+      return current_pc + 4;
     }
     break;
+  case funct3::OR:
+    if (d_instr.funct7 == funct7::BASE) {
+      rd = rs1 | rs2;
+    } else {
+      std::cout << "Illegal instruction. R-Type, OR" << std::endl;
+      return current_pc + 4;
+    }
+    break;
+  case funct3::AND:
+    if (d_instr.funct7 == funct7::BASE) {
+      rd = rs1 & rs2;
+    } else {
+      std::cout << "Illegal instruction. R-Type, AND" << std::endl;
+      return current_pc + 4;
+    }
+    break;
+  case funct3::SLL:
+    if (d_instr.funct7 == funct7::BASE) {
+      rd = rs1 << (rs2 & 0x1F);
+    } else {
+      std::cout << "Illegal instruction. R-Type, SLL" << std::endl;
+      return current_pc + 4;
+    }
+    break;
+  case funct3::SRL_SRA:
+    if (d_instr.funct7 == funct7::SUB_SRA) {          // SRA
+      rd = static_cast<int32_t>(rs1) >> (rs2 & 0x1F); // msb-extends????
+    } else if (d_instr.funct7 == funct7::BASE) {      // SRL
+      rd = rs1 >> (rs2 & 0x1F);
+    } else {
+      std::cout << "Illegal instruction. R-Type, SRA, SRL" << std::endl;
+
+      return current_pc + 4;
+    }
+    break;
+  case funct3::SLT:
+    if (d_instr.funct7 == funct7::BASE) {
+      rd = (static_cast<int32_t>(rs1) < static_cast<int32_t>(rs2)) ? 1u : 0u;
+    } else {
+      std::cout << "Illegal instruction. R-Type, SLT" << std::endl;
+      return current_pc + 4;
+    }
+    break;
+  case funct3::SLTU:
+    if (d_instr.funct7 == funct7::BASE) {
+      rd = (rs1 < rs2) ? 1u : 0u;
+    }
+    break;
+
   default:
     // unknown funct3 - just advance pc, we'll implement later.
     return current_pc + 4;
