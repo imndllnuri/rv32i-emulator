@@ -4,6 +4,7 @@
 #include "../include/fetch.hpp"
 #include "../include/instruction.hpp"
 #include <cstdint>
+#include <iostream>
 
 namespace riscv {
 
@@ -76,7 +77,7 @@ uint32_t CPU::execute_r_type(const DecodedInstruction &d_instr,
 
   switch (d_instr.funct3) {
   case funct3::ADD_SUB: // 0b000
-    if (d_instr.funct7 == funct7::ADD) {
+    if (d_instr.funct7 == funct7::BASE) {
       // add instruction
       rd = rs1 + rs2;
     } else if (d_instr.funct7 == funct7::SUB) {
@@ -86,6 +87,13 @@ uint32_t CPU::execute_r_type(const DecodedInstruction &d_instr,
       // for now these are illegal instructions, we'll implement raising
       // exceptions
       return current_pc + 4;
+    }
+    break;
+  case funct3::XOR:
+    if (d_instr.funct7 == funct7::BASE) {
+      rd = rs1 ^ rs2;
+    } else {
+      std::cout << "Illegal instruction. R-Type, XOR" << std::endl;
     }
     break;
   default:

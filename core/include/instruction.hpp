@@ -61,21 +61,22 @@ namespace opcode {
 // Integer Register - Register Operations
 // ADD / SUB, SLL / SRL / SRA, AND / OR / XOR, SLT / SLTU
 constexpr uint8_t IRRO = 0b0110011; // R-Type (ADD, SUB, AND, OR ..)
-
 } // namespace opcode
 
 // funct3 values (3-bit)
 namespace funct3 {
 
-constexpr uint8_t ADD_SUB = 0b000; // ADD, SUB, ADDI ...
-
+constexpr uint8_t ADD_SUB = 0b000; // ADD, SUB, ADDI, ...
+constexpr uint8_t XOR = 0b100;
 } // namespace funct3
 
 // funct7 values (7-bit)
 namespace funct7 {
 
-constexpr uint8_t ADD = 0b0000000;
-constexpr uint8_t SUB = 0b0100000;
+constexpr uint8_t BASE =
+    0b0000000; // 0x00 ADD, XOR, OR, AND, Shift Left Logical, Shift Right
+               // Logical, set less than
+constexpr uint8_t SUB = 0b0100000; // 0x20, shift right arith* (msb-extends)
 
 // For RV32M (multiplication extension) you would add more here
 } // namespace funct7
