@@ -100,7 +100,8 @@ uint32_t execute_r_type(const DecodedInstruction &d_instr, uint32_t current_pc,
 // For other types, either implement or throw
 uint32_t execute_i_type(const DecodedInstruction &d_instr, uint32_t current_pc,
                         RegisterFile &regs, Memory &mem) {
-  if (d_instr.opcode != opcode::I_TYPE && d_instr.opcode != opcode::I_TYPE_L) {
+  if (d_instr.opcode != opcode::I_TYPE && d_instr.opcode != opcode::I_TYPE_L &&
+      d_instr.opcode != opcode::JALR && d_instr.opcode != opcode::SYSTEM) {
     throw IllegalInstructionException("Non I-Type opcode in I-Type handler.");
   }
   uint32_t rs1 = regs.read(d_instr.rs1);
@@ -169,6 +170,28 @@ uint32_t execute_i_type(const DecodedInstruction &d_instr, uint32_t current_pc,
     default:
       throw UnimplementedInstructionException("I-Type funct3 not implemented.");
     }
+  } else if (d_instr.opcode == opcode::JALR) {
+    uint32_t rs1 = regs.read(d_instr.rs1);
+    uint32_t target = (rs1 + imm) & ~1; // en düşük bit sıfırlanır
+    regs.write(d_instr.rd, current_pc + 4);
+    return target;
+  } else if (d_instr.opcode == opcode::SYSTEM) {
+    // ECALL ve EBREAK: funct3=0 should be
+    if (d_instr.funct3 != 0) {
+      throw IllegalInstructionException("Invalid SYSTEM funct3");
+    }
+    // imm değerine göre ayırt et
+    if (d_instr.imm == 0) {
+      // ECALL
+      throw CpuException("ECALL encountered");
+    } else if (d_instr.imm == 1) {
+      // EBREAK
+      throw CpuException("EBREAK encountered");
+    } else {
+      throw IllegalInstructionException("Unknown SYSTEM immediate");
+    }
+    // NOTE: after ECALL/EBREAK pc does not move, it creates trap. We can throw
+    // exepction to mock behavior so step() returns false.
   } else {
     throw UnimplementedInstructionException(
         "I‑type instructions not yet implemented");
@@ -176,32 +199,30 @@ uint32_t execute_i_type(const DecodedInstruction &d_instr, uint32_t current_pc,
   regs.write(d_instr.rd, rd);
   return current_pc + 4;
 }
-
 uint32_t execute_s_type(const DecodedInstruction &d_instr, uint32_t current_pc,
                         RegisterFile &regs, Memory &mem) {
   if (d_instr.opcode != opcode::I_TYPE_S) {
     throw IllegalInstructionException("Non S-Type opcode in S-Type handler.");
-
-    uint32_t rs1 = regs.read(d_instr.rs1);
-    uint32_t rs2 = regs.read(d_instr.rs2);
-    uint32_t rd = rs1 + d_instr.imm;
-    switch (d_instr.funct3) {
-    case funct3::SB:
-      mem.write_byte(rd, static_cast<uint8_t>(rs2));
-      break;
-    case funct3::SH:
-      mem.write_half(rd, static_cast<uint16_t>(rs2));
-      break;
-    case funct3::SW:
-      mem.write_word(rd, rs2);
-      break;
-    default:
-      throw IllegalInstructionException("S-Type funct3 not yet implemented.");
-    }
-    return current_pc + 4;
   }
-  throw UnimplementedInstructionException(
-      "S‑type instructions not yet implemented");
+
+  uint32_t rs1 = regs.read(d_instr.rs1);
+  uint32_t rs2 = regs.read(d_instr.rs2);
+  uint32_t addr = rs1 + d_instr.imm; // etkin adres
+
+  switch (d_instr.funct3) {
+  case funct3::SB:
+    mem.write_byte(addr, static_cast<uint8_t>(rs2));
+    break;
+  case funct3::SH:
+    mem.write_half(addr, static_cast<uint16_t>(rs2));
+    break;
+  case funct3::SW:
+    mem.write_word(addr, rs2);
+    break;
+  default:
+    throw IllegalInstructionException("S-Type funct3 not implemented.");
+  }
+  return current_pc + 4;
 }
 
 uint32_t execute_b_type(const DecodedInstruction &d_instr, uint32_t current_pc,
@@ -232,18 +253,33 @@ uint32_t execute_b_type(const DecodedInstruction &d_instr, uint32_t current_pc,
       "B‑type instructions not yet implemented");
 }
 
-uint32_t execute_u_type(const DecodedInstruction & /*d_instr*/,
-                        uint32_t /*current_pc*/, RegisterFile & /*regs*/,
-                        Memory & /*mem*/) {
-  throw UnimplementedInstructionException(
-      "U‑type instructions not yet implemented");
+uint32_t execute_u_type(const DecodedInstruction &d_instr, uint32_t current_pc,
+                        RegisterFile &regs, Memory & /*mem*/) {
+  uint32_t rd_val;
+  if (d_instr.opcode == opcode::LUI) {
+    // imm, imm_u() returned by it, 20-bit high value (bottom 12 bits are zero
+    // anyways so we good.)
+    rd_val = static_cast<uint32_t>(d_instr.imm);
+  } else { // AUIPC
+    rd_val = current_pc + static_cast<uint32_t>(d_instr.imm);
+  }
+  regs.write(d_instr.rd, rd_val);
+  return current_pc + 4;
 }
 
-uint32_t execute_j_type(const DecodedInstruction & /*d_instr*/,
-                        uint32_t /*current_pc*/, RegisterFile & /*regs*/,
-                        Memory & /*mem*/) {
-  throw UnimplementedInstructionException(
-      "J‑type instructions not yet implemented");
+uint32_t execute_j_type(const DecodedInstruction &d_instr, uint32_t current_pc,
+                        RegisterFile &regs, Memory &mem) {
+
+  uint32_t next_pc;
+
+  if (d_instr.opcode == opcode::JAL) {
+    regs.write(d_instr.rd, current_pc + 4);
+    next_pc = current_pc + d_instr.imm;
+  } else {
+    throw IllegalInstructionException("Invalid J-type opcode");
+  }
+
+  return next_pc;
 }
 
 } // namespace execute

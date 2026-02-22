@@ -68,7 +68,11 @@ constexpr uint8_t I_TYPE_L = 0b0000011; // LOAD I TYPE.
 constexpr uint8_t I_TYPE_S = 0b0100011;
 constexpr uint8_t B_TYPE = 0b1100011; // Branch types
                                       //  beq, bne, blt, bge, bltu, bgeu
-
+constexpr uint8_t JAL = 0b1101111;
+constexpr uint8_t JALR = 0b1100111;
+constexpr uint8_t LUI = 0b0110111;    // U‑tipi
+constexpr uint8_t AUIPC = 0b0010111;  // U‑tipi
+constexpr uint8_t SYSTEM = 0b1110011; // I‑tipi (ecall/ebreak)
 } // namespace opcode
 
 // funct3 values (3-bit)
@@ -114,6 +118,7 @@ constexpr uint8_t BLTU = 0b110;
 constexpr uint8_t BGEU = 0b111;
 // B-TYPE funct3 for branches
 
+constexpr uint8_t JALR = 0b000;
 } // namespace funct3
 
 // funct7 values (7-bit)

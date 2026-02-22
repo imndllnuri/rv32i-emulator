@@ -65,6 +65,23 @@ DecodedInstruction decode(uint32_t instr) {
     d.format = DecodedInstruction::Format::B;
     d.imm = imm_b(instr);
     break;
+  case opcode::JAL:
+    d.format = DecodedInstruction::Format::J;
+    d.imm = imm_j(instr);
+    break;
+  case opcode::JALR:
+    d.format = DecodedInstruction::Format::I; // I‑tipi
+    d.imm = imm_i(instr);                     // 12-bit signed immediate
+    break;
+  case opcode::LUI:
+  case opcode::AUIPC:
+    d.format = DecodedInstruction::Format::U;
+    d.imm = imm_u(instr);
+    break;
+  case opcode::SYSTEM:
+    d.format = DecodedInstruction::Format::I;
+    d.imm = imm_i(instr); // 12‑bit signed immediate
+    break;
   default:
     throw IllegalInstructionException("Instruction is not implemented yet.");
   }
