@@ -45,9 +45,9 @@ DecodedInstruction decode(uint32_t instr) {
 
   // Determine format and compute immediate
   switch (d.opcode) {
-  case opcode::IRRO:
-    d.format = DecodedInstruction::Format::R;
-    d.imm = 0;
+  case opcode::I_TYPE:
+    d.format = DecodedInstruction::Format::I;
+    d.imm = imm_i(instr);
     break;
   default:
     d.format = DecodedInstruction::Format::R;

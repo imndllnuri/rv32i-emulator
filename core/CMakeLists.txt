@@ -35,6 +35,7 @@ target_include_directories(riscv_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
 # Build tests if enabled
 if(BUILD_TESTS)
     # Create a list of test executables by scanning the tests directory
+    enable_testing()
     file(GLOB TEST_SOURCES "tests/test_*.cc")
     foreach(TEST_FILE ${TEST_SOURCES})
         # Extract the test name (e.g., test_add -> add)
@@ -42,7 +43,6 @@ if(BUILD_TESTS)
         add_executable(${TEST_NAME} ${TEST_FILE})
         target_link_libraries(${TEST_NAME} PRIVATE riscv_core)
         # Optionally, add a test using CTest
-        # enable_testing()
-        # add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+        add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
     endforeach()
 endif()

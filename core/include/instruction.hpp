@@ -51,7 +51,9 @@
 #ifndef RISCV_INSTRUCTION_HPP
 #define RISCV_INSTRUCTION_HPP
 
+#include <cmath>
 #include <cstdint>
+#include <sys/types.h>
 
 namespace riscv {
 
@@ -60,12 +62,14 @@ namespace opcode {
 
 // Integer Register - Register Operations
 // ADD / SUB, SLL / SRL / SRA, AND / OR / XOR, SLT / SLTU
-constexpr uint8_t IRRO = 0b0110011; // R-Type (ADD, SUB, AND, OR ..)
+constexpr uint8_t R_TYPE = 0b0110011; // R-Type (ADD, SUB, AND, OR ..)
+constexpr uint8_t I_TYPE = 0b0010011; // I-TYPE
+
 } // namespace opcode
 
 // funct3 values (3-bit)
 namespace funct3 {
-
+// R-Type funct3
 constexpr uint8_t ADD_SUB = 0b000; // ADD, SUB, ADDI, ... d
 constexpr uint8_t SLL = 0b001;     // d
 constexpr uint8_t SLT = 0b010;
@@ -74,6 +78,19 @@ constexpr uint8_t XOR = 0b100;     // d
 constexpr uint8_t SRL_SRA = 0b101; // SRA is msb-extends /d
 constexpr uint8_t OR = 0b110;      // d
 constexpr uint8_t AND = 0b111;     // d
+// R-Type funct3
+
+// I-Type funct3
+constexpr uint8_t ADDI = 0b000;
+constexpr uint8_t XORI = 0b100;
+constexpr uint8_t ORI = 0b110;
+constexpr uint8_t ANDI = 0b111;
+constexpr uint8_t SLLI = 0b001;
+constexpr uint8_t SRLI_SRAI = 0b101;
+constexpr uint8_t SLTI = 0b010;
+constexpr uint8_t SLTIU = 0b011;
+// I-Type funct3
+
 } // namespace funct3
 
 // funct7 values (7-bit)

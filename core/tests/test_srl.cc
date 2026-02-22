@@ -16,12 +16,22 @@ int main() {
 
   // SRL x3, x1, x2  (funct7=0, funct3=5, opcode=0x33)
   // Encoding: 0x50C1B3
-  uint32_t instr = 0x50C1B3;
-
+  // uint32_t instr = 0x0020D1B3;
+  uint32_t instr = 0x0020D1B3;
   CPU cpu;
+
+  // -------- SRL --------
   cpu.reset();
+  cpu.set_register(CPU::Reg::ra, 0x80000000);
+  cpu.set_register(CPU::Reg::sp, 1);
+  cpu.write_memory_word(cpu.get_pc(), instr);
+  cpu.step();
+
+  TEST(cpu.registers_state()[3] == 0x40000000,
+       "SRL: 0x80000000 >> 1 = 0x40000000");
 
   // Test 1: logical right shift by 1
+  cpu.reset();
   cpu.set_register(CPU::Reg::ra, 0x87654321);
   cpu.set_register(CPU::Reg::sp, 1);
   cpu.write_memory_word(cpu.get_pc(), instr);

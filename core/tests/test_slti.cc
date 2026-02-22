@@ -11,71 +11,71 @@
     }                                                                          \
   } while (0)
 
+namespace riscv {
+uint32_t make_i_type(uint32_t funct3, uint32_t rs1, uint32_t rd, int32_t imm) {
+  uint32_t uimm = static_cast<uint32_t>(imm) & 0xFFF;
+  return (uimm << 20) | (rs1 << 15) | (funct3 << 12) | (rd << 7) | 0x13;
+}
+} // namespace riscv
+
 int main() {
   using namespace riscv;
 
-  // SLT x3, x1, x2  (funct7=0, funct3=2, opcode=0x33)
-  // Encoding: 0x20C1B3
-  uint32_t instr = 0x0020A1B3;
+  // SLTI x3, x1, 5   (funct3=2)
+  uint32_t instr = make_i_type(0x2, 1, 3, 5);
 
   CPU cpu;
   cpu.reset();
 
   // Test 1: positive less than positive
   cpu.set_register(CPU::Reg::ra, 3);
-  cpu.set_register(CPU::Reg::sp, 5);
   cpu.write_memory_word(cpu.get_pc(), instr);
   cpu.step();
+  // std::cout << cpu.registers_state()[3] << std::endl;
   TEST(cpu.registers_state()[3] == 1, "3 < 5 -> 1");
 
   // Test 2: positive not less than positive
   cpu.reset();
   cpu.set_register(CPU::Reg::ra, 7);
-  cpu.set_register(CPU::Reg::sp, 2);
   cpu.write_memory_word(cpu.get_pc(), instr);
   cpu.step();
-  TEST(cpu.registers_state()[3] == 0, "7 < 2 -> 0");
+  TEST(cpu.registers_state()[3] == 0, "7 < 5 -> 0");
 
   // Test 3: negative less than positive
   cpu.reset();
   cpu.set_register(CPU::Reg::ra, (uint32_t)-5); // 0xFFFFFFFB
-  cpu.set_register(CPU::Reg::sp, 10);
   cpu.write_memory_word(cpu.get_pc(), instr);
   cpu.step();
-  TEST(cpu.registers_state()[3] == 1, "-5 < 10 -> 1");
+  TEST(cpu.registers_state()[3] == 1, "-5 < 5 -> 1");
 
   // Test 4: positive less than negative (false)
   cpu.reset();
   cpu.set_register(CPU::Reg::ra, 10);
-  cpu.set_register(CPU::Reg::sp, (uint32_t)-5);
-  cpu.write_memory_word(cpu.get_pc(), instr);
+  cpu.write_memory_word(cpu.get_pc(), make_i_type(0x2, 1, 3, -5)); // imm = -5
   cpu.step();
   TEST(cpu.registers_state()[3] == 0, "10 < -5 -> 0");
 
   // Test 5: negative less than negative
   cpu.reset();
-  cpu.set_register(CPU::Reg::ra, (uint32_t)-10); // 0xFFFFFFF6
-  cpu.set_register(CPU::Reg::sp, (uint32_t)-5);  // 0xFFFFFFFB
-  cpu.write_memory_word(cpu.get_pc(), instr);
+  cpu.set_register(CPU::Reg::ra, (uint32_t)-10);
+  cpu.write_memory_word(cpu.get_pc(), make_i_type(0x2, 1, 3, -5));
   cpu.step();
   TEST(cpu.registers_state()[3] == 1, "-10 < -5 -> 1");
 
   // Test 6: equal values
   cpu.reset();
   cpu.set_register(CPU::Reg::ra, 42);
-  cpu.set_register(CPU::Reg::sp, 42);
-  cpu.write_memory_word(cpu.get_pc(), instr);
+  cpu.write_memory_word(cpu.get_pc(), make_i_type(0x2, 1, 3, 42));
   cpu.step();
   TEST(cpu.registers_state()[3] == 0, "42 < 42 -> 0");
 
   // Test 7: x0 unchanged
   cpu.reset();
   cpu.set_register(CPU::Reg::ra, 1);
-  cpu.set_register(CPU::Reg::sp, 2);
   cpu.write_memory_word(cpu.get_pc(), instr);
   cpu.step();
   TEST(cpu.registers_state()[0] == 0, "x0 remains zero");
 
-  std::cout << "All SLT tests PASSED!" << std::endl;
+  std::cout << "All SLTI tests PASSED!" << std::endl;
   return 0;
 }

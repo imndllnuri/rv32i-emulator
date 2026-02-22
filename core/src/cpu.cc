@@ -1,8 +1,8 @@
 #include "../include/cpu.hpp"
 #include "../include/decode.hpp"
+#include "../include/exception.hpp"
 #include "../include/execute.hpp"
 #include "../include/fetch.hpp"
-#include "../include/instruction.hpp"
 #include <cstdint>
 #include <iostream>
 
@@ -23,10 +23,20 @@ void CPU::load_program(const std::vector<uint8_t> &code, uint32_t address) {
 }
 
 bool CPU::step() {
-  uint32_t instr = fetch_instruction();
-  uint32_t next_pc = execute_instruction(instr, pc);
-  pc = next_pc;
-  return true;
+  try {
+    uint32_t instr = fetch_instruction();
+    uint32_t next_pc = execute_instruction(instr, pc);
+    pc = next_pc;
+    return true;
+  } catch (const CpuException &e) {
+    std::cerr << "CPU error at PC 0x" << std::hex << pc << ": " << e.what()
+              << std::endl;
+    return false;
+  } catch (const MemoryAccessException &e) {
+    std::cerr << "Memory error at PC 0x" << std::hex << pc << ": " << e.what()
+              << std::endl;
+    return false;
+  }
 }
 
 uint32_t CPU::fetch_instruction() { return fetch::fetch_instruction(pc, mem); }
@@ -36,137 +46,20 @@ uint32_t CPU::execute_instruction(uint32_t instr, uint32_t current_pc) {
 
   switch (d_instr.format) {
   case DecodedInstruction::Format::R:
-    return execute_r_type(d_instr, current_pc);
-  case riscv::DecodedInstruction::Format::I:
-    return execute_i_type(d_instr, current_pc);
-  case riscv::DecodedInstruction::Format::S:
-    return execute_s_type(d_instr, current_pc);
-  case riscv::DecodedInstruction::Format::B:
-    return execute_b_type(d_instr, current_pc);
-  case riscv::DecodedInstruction::Format::U:
-    return execute_u_type(d_instr, current_pc);
-  case riscv::DecodedInstruction::Format::J:
-    return execute_j_type(d_instr, current_pc);
-  }
-  return current_pc;
-}
-
-// Per‑type execution: all forward to the corresponding execute:: functions
-uint32_t CPU::execute_i_type(const DecodedInstruction &d_instr,
-                             uint32_t current_pc) {
-  return execute::execute_i_type(d_instr, current_pc, regs, mem);
-}
-
-uint32_t CPU::execute_b_type(const DecodedInstruction &d_instr,
-                             uint32_t current_pc) {
-  return execute::execute_b_type(d_instr, current_pc, regs, mem);
-}
-
-uint32_t CPU::execute_r_type(const DecodedInstruction &d_instr,
-                             uint32_t current_pc) {
-
-  if (d_instr.opcode != opcode::IRRO) {
-    // unkown opcode we can just advance for now (we'll raise an exception
-    // later.)
-    return current_pc + 4;
-  }
-  // funct3, imm, funct7, rs1, rs2, rd
-  uint32_t rs1 = regs.read(d_instr.rs1);
-  uint32_t rs2 = regs.read(d_instr.rs2);
-  uint32_t rd;
-
-  switch (d_instr.funct3) {
-  case funct3::ADD_SUB: // 0b000
-    if (d_instr.funct7 == funct7::BASE) {
-      // add instruction
-      rd = rs1 + rs2;
-    } else if (d_instr.funct7 == funct7::SUB_SRA) {
-      // sub instruction
-      rd = rs1 - rs2;
-
-    } else { // for now these are illegal instructions, we'll implement raising
-             // exceptions
-
-      return current_pc + 4;
-    }
-    break;
-  case funct3::XOR:
-    if (d_instr.funct7 == funct7::BASE) {
-      rd = rs1 ^ rs2;
-    } else {
-      std::cout << "Illegal instruction. R-Type, XOR" << std::endl;
-      return current_pc + 4;
-    }
-    break;
-  case funct3::OR:
-    if (d_instr.funct7 == funct7::BASE) {
-      rd = rs1 | rs2;
-    } else {
-      std::cout << "Illegal instruction. R-Type, OR" << std::endl;
-      return current_pc + 4;
-    }
-    break;
-  case funct3::AND:
-    if (d_instr.funct7 == funct7::BASE) {
-      rd = rs1 & rs2;
-    } else {
-      std::cout << "Illegal instruction. R-Type, AND" << std::endl;
-      return current_pc + 4;
-    }
-    break;
-  case funct3::SLL:
-    if (d_instr.funct7 == funct7::BASE) {
-      rd = rs1 << (rs2 & 0x1F);
-    } else {
-      std::cout << "Illegal instruction. R-Type, SLL" << std::endl;
-      return current_pc + 4;
-    }
-    break;
-  case funct3::SRL_SRA:
-    if (d_instr.funct7 == funct7::SUB_SRA) {          // SRA
-      rd = static_cast<int32_t>(rs1) >> (rs2 & 0x1F); // msb-extends????
-    } else if (d_instr.funct7 == funct7::BASE) {      // SRL
-      rd = rs1 >> (rs2 & 0x1F);
-    } else {
-      std::cout << "Illegal instruction. R-Type, SRA, SRL" << std::endl;
-
-      return current_pc + 4;
-    }
-    break;
-  case funct3::SLT:
-    if (d_instr.funct7 == funct7::BASE) {
-      rd = (static_cast<int32_t>(rs1) < static_cast<int32_t>(rs2)) ? 1u : 0u;
-    } else {
-      std::cout << "Illegal instruction. R-Type, SLT" << std::endl;
-      return current_pc + 4;
-    }
-    break;
-  case funct3::SLTU:
-    if (d_instr.funct7 == funct7::BASE) {
-      rd = (rs1 < rs2) ? 1u : 0u;
-    }
-    break;
-
+    return execute::execute_r_type(d_instr, current_pc, regs, mem);
+  case DecodedInstruction::Format::I:
+    return execute::execute_i_type(d_instr, current_pc, regs, mem);
+  case DecodedInstruction::Format::S:
+    return execute::execute_s_type(d_instr, current_pc, regs, mem);
+  case DecodedInstruction::Format::B:
+    return execute::execute_b_type(d_instr, current_pc, regs, mem);
+  case DecodedInstruction::Format::U:
+    return execute::execute_u_type(d_instr, current_pc, regs, mem);
+  case DecodedInstruction::Format::J:
+    return execute::execute_j_type(d_instr, current_pc, regs, mem);
   default:
-    // unknown funct3 - just advance pc, we'll implement later.
-    return current_pc + 4;
+    throw UnimplementedInstructionException("Unknown instruction format");
   }
-
-  regs.write(d_instr.rd, rd);
-  return current_pc + 4;
-}
-
-uint32_t CPU::execute_s_type(const DecodedInstruction &d_instr,
-                             uint32_t current_pc) {
-  return current_pc;
-}
-uint32_t CPU::execute_u_type(const DecodedInstruction &d_instr,
-                             uint32_t current_pc) {
-  return current_pc;
-}
-uint32_t CPU::execute_j_type(const DecodedInstruction &d_instr,
-                             uint32_t current_pc) {
-  return current_pc;
 }
 
 // Immediate helpers – simply forward to decode functions
@@ -178,7 +71,10 @@ uint32_t CPU::execute_j_type(const DecodedInstruction &d_instr,
 // const { return decode::imm_j(instr); }
 
 void CPU::run() {
-  // Not implemented in original – kept as is
+  uint64_t total_instr = 0;
+  while (step()) {
+    total_instr++;
+  }
 }
 
 } // namespace riscv
