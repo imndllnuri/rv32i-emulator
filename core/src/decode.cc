@@ -1,6 +1,6 @@
 #include "../include/decode.hpp"
+#include "../include/exception.hpp"
 #include "../include/instruction.hpp"
-
 namespace riscv {
 
 static int32_t imm_i(uint32_t instr) {
@@ -45,14 +45,28 @@ DecodedInstruction decode(uint32_t instr) {
 
   // Determine format and compute immediate
   switch (d.opcode) {
+  case opcode::R_TYPE:
+    d.format = DecodedInstruction::Format::R;
+    d.imm = 0;
+    break;
   case opcode::I_TYPE:
     d.format = DecodedInstruction::Format::I;
     d.imm = imm_i(instr);
     break;
-  default:
-    d.format = DecodedInstruction::Format::R;
-    d.imm = 0;
+  case opcode::I_TYPE_L:
+    d.format = DecodedInstruction::Format::I;
+    d.imm = static_cast<int32_t>(instr) >> 20;
     break;
+  case opcode::I_TYPE_S:
+    d.format = DecodedInstruction::Format::S;
+    d.imm = imm_s(instr);
+    break;
+  case opcode::B_TYPE:
+    d.format = DecodedInstruction::Format::B;
+    d.imm = imm_b(instr);
+    break;
+  default:
+    throw IllegalInstructionException("Instruction is not implemented yet.");
   }
 
   return d;

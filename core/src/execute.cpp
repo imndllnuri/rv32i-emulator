@@ -5,6 +5,7 @@
 #include "../include/memory.hpp"
 #include "../include/register.hpp"
 #include <cstdint>
+#include <sys/types.h>
 
 namespace riscv {
 namespace execute {
@@ -98,65 +99,135 @@ uint32_t execute_r_type(const DecodedInstruction &d_instr, uint32_t current_pc,
 
 // For other types, either implement or throw
 uint32_t execute_i_type(const DecodedInstruction &d_instr, uint32_t current_pc,
-                        RegisterFile &regs, Memory & /*mem*/) {
-  if (d_instr.opcode != opcode::I_TYPE) {
+                        RegisterFile &regs, Memory &mem) {
+  if (d_instr.opcode != opcode::I_TYPE && d_instr.opcode != opcode::I_TYPE_L) {
     throw IllegalInstructionException("Non I-Type opcode in I-Type handler.");
   }
   uint32_t rs1 = regs.read(d_instr.rs1);
   uint32_t imm = d_instr.imm;
-  uint32_t rd;
-  switch (d_instr.funct3) {
+  uint32_t rd = 0;
+  if (d_instr.opcode == opcode::I_TYPE_L) {
+    uint32_t ea = rs1 + imm;
+    switch (d_instr.funct3) {
 
-  case funct3::ADDI:
-    rd = rs1 + imm;
-    break;
-  case funct3::XORI:
-    rd = rs1 ^ imm;
-    break;
-  case funct3::ORI:
-    rd = rs1 | imm;
-    break;
-  case funct3::ANDI:
-    rd = rs1 & imm;
-    break;
-  case funct3::SLLI:
-    rd = rs1 << (imm & 0x1F);
-    break;
-  case funct3::SRLI_SRAI:
-    if (d_instr.funct7 == funct7::BASE) {
-      rd = rs1 >> (imm & 0x1F);
+    case funct3::LB:
+      rd = static_cast<uint32_t>(
+          static_cast<int32_t>(static_cast<int8_t>(mem.read_byte(ea))));
       break;
-    } else if (d_instr.funct7 == funct7::SUB_SRA) {
-      rd = static_cast<int32_t>(rs1) >> (imm & 0x1F);
+    case funct3::LH:
+      rd = static_cast<uint32_t>(
+          static_cast<int32_t>(static_cast<int16_t>(mem.read_half(ea))));
       break;
-    } else {
-      throw IllegalInstructionException("I-Type SRLI/SRAI with wrong funct7.");
+    case funct3::LW: // 0b010 - load word
+      rd = mem.read_word(ea);
+      break;
+    case funct3::LBU: // 0b100 - load byte, zero-extend
+      rd = mem.read_byte(ea);
+      break;
+    case funct3::LHU: // 0b101 - load half word, zero-extend
+      rd = mem.read_half(ea);
+      break;
+    default:
+      throw IllegalInstructionException("Invalid load funct3");
     }
-  case funct3::SLTI:
-    rd = (static_cast<int32_t>(rs1) < static_cast<int32_t>(imm)) ? 1 : 0;
-    break;
-  case funct3::SLTIU:
-    rd = (rs1 < static_cast<uint32_t>(imm)) ? 1u : 0u;
-    break;
-  default:
-    throw UnimplementedInstructionException("I-Type funct3 not implemented.");
+  } else if (d_instr.opcode == opcode::I_TYPE) {
+
+    switch (d_instr.funct3) {
+
+    case funct3::ADDI:
+      rd = rs1 + imm;
+      break;
+    case funct3::XORI:
+      rd = rs1 ^ imm;
+      break;
+    case funct3::ORI:
+      rd = rs1 | imm;
+      break;
+    case funct3::ANDI:
+      rd = rs1 & imm;
+      break;
+    case funct3::SLLI:
+      rd = rs1 << (imm & 0x1F);
+      break;
+    case funct3::SRLI_SRAI:
+      if (d_instr.funct7 == funct7::BASE) {
+        rd = rs1 >> (imm & 0x1F);
+        break;
+      } else if (d_instr.funct7 == funct7::SUB_SRA) {
+        rd = static_cast<int32_t>(rs1) >> (imm & 0x1F);
+        break;
+      } else {
+        throw IllegalInstructionException(
+            "I-Type SRLI/SRAI with wrong funct7.");
+      }
+    case funct3::SLTI:
+      rd = (static_cast<int32_t>(rs1) < static_cast<int32_t>(imm)) ? 1 : 0;
+      break;
+    case funct3::SLTIU:
+      rd = (rs1 < static_cast<uint32_t>(imm)) ? 1u : 0u;
+      break;
+    default:
+      throw UnimplementedInstructionException("I-Type funct3 not implemented.");
+    }
+  } else {
+    throw UnimplementedInstructionException(
+        "I‑type instructions not yet implemented");
   }
-  // throw UnimplementedInstructionException(
-  //     "I‑type instructions not yet implemented");
   regs.write(d_instr.rd, rd);
   return current_pc + 4;
 }
 
-uint32_t execute_s_type(const DecodedInstruction & /*d_instr*/,
-                        uint32_t /*current_pc*/, RegisterFile & /*regs*/,
-                        Memory & /*mem*/) {
+uint32_t execute_s_type(const DecodedInstruction &d_instr, uint32_t current_pc,
+                        RegisterFile &regs, Memory &mem) {
+  if (d_instr.opcode != opcode::I_TYPE_S) {
+    throw IllegalInstructionException("Non S-Type opcode in S-Type handler.");
+
+    uint32_t rs1 = regs.read(d_instr.rs1);
+    uint32_t rs2 = regs.read(d_instr.rs2);
+    uint32_t rd = rs1 + d_instr.imm;
+    switch (d_instr.funct3) {
+    case funct3::SB:
+      mem.write_byte(rd, static_cast<uint8_t>(rs2));
+      break;
+    case funct3::SH:
+      mem.write_half(rd, static_cast<uint16_t>(rs2));
+      break;
+    case funct3::SW:
+      mem.write_word(rd, rs2);
+      break;
+    default:
+      throw IllegalInstructionException("S-Type funct3 not yet implemented.");
+    }
+    return current_pc + 4;
+  }
   throw UnimplementedInstructionException(
       "S‑type instructions not yet implemented");
 }
 
-uint32_t execute_b_type(const DecodedInstruction & /*d_instr*/,
-                        uint32_t /*current_pc*/, RegisterFile & /*regs*/,
-                        Memory & /*mem*/) {
+uint32_t execute_b_type(const DecodedInstruction &d_instr, uint32_t current_pc,
+                        RegisterFile &regs, Memory & /*mem*/) {
+  if (d_instr.opcode != opcode::B_TYPE) {
+    throw IllegalInstructionException("Non B-Type opcode in B-Type handler.");
+  }
+  uint32_t rs1 = regs.read(d_instr.rs1);
+  uint32_t rs2 = regs.read(d_instr.rs2);
+  // the reason we have int32_t instead of uint32_t is that when there is a
+  // backward branch if we have uint32_t it would break.
+  int32_t imm = d_instr.imm;
+  switch (d_instr.funct3) {
+  case funct3::BEQ:
+    return (rs1 == rs2) ? current_pc + imm : current_pc + 4;
+  case funct3::BNE:
+    return (rs1 != rs2) ? current_pc + imm : current_pc + 4;
+  case funct3::BLT:
+    return ((int32_t)rs1 < (int32_t)rs2) ? current_pc + imm : current_pc + 4;
+  case funct3::BGE:
+    return ((int32_t)rs1 >= (int32_t)rs2) ? current_pc + imm : current_pc + 4;
+  case funct3::BLTU:
+    return (rs1 < rs2) ? current_pc + imm : current_pc + 4;
+  case funct3::BGEU:
+    return (rs1 >= rs2) ? current_pc + imm : current_pc + 4;
+  }
   throw UnimplementedInstructionException(
       "B‑type instructions not yet implemented");
 }

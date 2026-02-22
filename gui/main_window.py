@@ -1,6 +1,6 @@
 import os
-from .find_dialog import FindDialog
-from .replace_dialog import ReplaceDialog
+from find_dialog import FindDialog
+from replace_dialog import ReplaceDialog
 from PyQt5 import uic
 from PyQt5.QtWidgets import QFileDialog, QMainWindow, QStatusBar, QDialog
 from PyQt5.QtGui import QFont

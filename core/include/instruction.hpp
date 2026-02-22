@@ -62,8 +62,12 @@ namespace opcode {
 
 // Integer Register - Register Operations
 // ADD / SUB, SLL / SRL / SRA, AND / OR / XOR, SLT / SLTU
-constexpr uint8_t R_TYPE = 0b0110011; // R-Type (ADD, SUB, AND, OR ..)
-constexpr uint8_t I_TYPE = 0b0010011; // I-TYPE
+constexpr uint8_t R_TYPE = 0b0110011;   // R-Type (ADD, SUB, AND, OR ..)
+constexpr uint8_t I_TYPE = 0b0010011;   // I-TYPE
+constexpr uint8_t I_TYPE_L = 0b0000011; // LOAD I TYPE.
+constexpr uint8_t I_TYPE_S = 0b0100011;
+constexpr uint8_t B_TYPE = 0b1100011; // Branch types
+                                      //  beq, bne, blt, bge, bltu, bgeu
 
 } // namespace opcode
 
@@ -90,6 +94,25 @@ constexpr uint8_t SRLI_SRAI = 0b101;
 constexpr uint8_t SLTI = 0b010;
 constexpr uint8_t SLTIU = 0b011;
 // I-Type funct3
+// I-Type funct3 for loads
+constexpr uint8_t LB = 0b000;
+constexpr uint8_t LH = 0b001;
+constexpr uint8_t LW = 0b010;
+constexpr uint8_t LBU = 0b100;
+constexpr uint8_t LHU = 0b101;
+// I-TYPE funct3 for loads
+constexpr uint8_t SB = 0b000;
+constexpr uint8_t SH = 0b001;
+constexpr uint8_t SW = 0b010;
+
+// B-TYPE funct3 for branches
+constexpr uint8_t BEQ = 0b000;
+constexpr uint8_t BNE = 0b001;
+constexpr uint8_t BLT = 0b100;
+constexpr uint8_t BGE = 0b101;
+constexpr uint8_t BLTU = 0b110;
+constexpr uint8_t BGEU = 0b111;
+// B-TYPE funct3 for branches
 
 } // namespace funct3
 
