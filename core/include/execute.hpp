@@ -4,7 +4,7 @@
 #include "decode.hpp"
 #include <cstdint>
 
-namespace riscv {
+namespace rv32i {
 
 class RegisterFile;
 class Memory;
@@ -25,6 +25,6 @@ uint32_t execute_j_type(const DecodedInstruction &d_instr, uint32_t current_pc,
                         RegisterFile &regs, Memory &mem);
 
 } // namespace execute
-} // namespace riscv
+} // namespace rv32i
 
 #endif

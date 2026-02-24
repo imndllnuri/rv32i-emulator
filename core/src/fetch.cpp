@@ -1,7 +1,7 @@
 #include "../include/fetch.hpp"
 #include "../include/memory.hpp"
 
-namespace riscv {
+namespace rv32i {
 namespace fetch {
 
 uint32_t fetch_instruction(uint32_t pc, const Memory &mem) {
@@ -9,4 +9,4 @@ uint32_t fetch_instruction(uint32_t pc, const Memory &mem) {
 }
 
 } // namespace fetch
-} // namespace riscv
+} // namespace rv32i

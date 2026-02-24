@@ -55,7 +55,7 @@
 #include <cstdint>
 #include <sys/types.h>
 
-namespace riscv {
+namespace rv32i {
 
 // Opcode values (7-bit)
 namespace opcode {
@@ -86,6 +86,14 @@ constexpr uint8_t XOR = 0b100;     // d
 constexpr uint8_t SRL_SRA = 0b101; // SRA is msb-extends /d
 constexpr uint8_t OR = 0b110;      // d
 constexpr uint8_t AND = 0b111;     // d
+constexpr uint8_t MUL = 0b000;
+constexpr uint8_t MULH = 0b001;
+constexpr uint8_t MULSU = 0b010;
+constexpr uint8_t MULU = 0b011;
+constexpr uint8_t DIV = 0b100;
+constexpr uint8_t DIVU = 0b101;
+constexpr uint8_t REM = 0b110;
+constexpr uint8_t REMU = 0b111;
 // R-Type funct3
 
 // I-Type funct3
@@ -128,13 +136,13 @@ constexpr uint8_t BASE =
     0b0000000; // 0x00 ADD, XOR, OR, AND, Shift Left Logical, Shift Right
                // Logical, set less than
 constexpr uint8_t SUB_SRA = 0b0100000; // 0x20, shift right arith* (msb-extends)
-
+constexpr uint8_t M_EXT = 0b0000001;
 // For RV32M (multiplication extension) you would add more here
 } // namespace funct7
 
 // Optional: helper to identify instruction type from opcode
 // etc.
 
-} // namespace riscv
+} // namespace rv32i
 
 #endif

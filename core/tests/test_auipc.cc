@@ -12,21 +12,21 @@
     }                                                                          \
   } while (0)
 
-namespace riscv {
+namespace rv32i {
 uint32_t make_u_type(uint32_t opcode, uint32_t rd, int32_t imm) {
   uint32_t uimm = static_cast<uint32_t>(imm) & 0xFFFFF000;
   return (uimm) | (rd << 7) | opcode;
 }
-} // namespace riscv
+} // namespace rv32i
 
 int main() {
-  using namespace riscv;
+  using namespace rv32i;
 
   CPU cpu;
   cpu.reset();
 
   // AUIPC x4, 0x1000  (PC + 0x1000)
-  uint32_t instr = make_u_type(riscv::opcode::AUIPC, 4, 0x1000);
+  uint32_t instr = make_u_type(rv32i::opcode::AUIPC, 4, 0x1000);
   cpu.write_memory_word(cpu.get_pc(), instr);
   cpu.step();
   TEST(cpu.registers_state()[4] == TEXT_START + 0x1000, "AUIPC x4, PC+0x1000");

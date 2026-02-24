@@ -11,7 +11,7 @@
     }                                                                          \
   } while (0)
 
-namespace riscv {
+namespace rv32i {
 uint32_t make_b_type(uint32_t funct3, uint32_t rs1, uint32_t rs2, int32_t imm) {
   uint32_t uimm = static_cast<uint32_t>(imm);
   uint32_t imm12 = (uimm >> 12) & 1;
@@ -22,10 +22,10 @@ uint32_t make_b_type(uint32_t funct3, uint32_t rs1, uint32_t rs2, int32_t imm) {
          (funct3 << 12) | (imm4_1 << 8) | (imm11 << 7) |
          0b1100011; // BRANCH opcode
 }
-} // namespace riscv
+} // namespace rv32i
 
 int main() {
-  using namespace riscv;
+  using namespace rv32i;
 
   CPU cpu;
   cpu.reset();
@@ -48,7 +48,7 @@ int main() {
   cpu.step();
   TEST(cpu.get_pc() == TEXT_START + 4, "BLT not taken (5 >= 3)");
 
-  // Test 3: signed karşılaştırma: -5 < 3 -> taken
+  // Test 3: signed comparison: -5 < 3 -> taken
   cpu.reset();
   cpu.set_register(CPU::Reg::ra, (uint32_t)-5);
   cpu.set_register(CPU::Reg::sp, 3);

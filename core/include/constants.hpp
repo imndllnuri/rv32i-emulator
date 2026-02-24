@@ -3,12 +3,12 @@
 
 #include <cstdint>
 
-namespace riscv {
+namespace rv32i {
 
 constexpr uint32_t MEMORY_SIZE = 1024 * 1024;
 constexpr uint32_t TEXT_START = 0x01000;
 constexpr uint32_t STACK_TOP = 0xEFFFF;
 
-} // namespace riscv
+} // namespace rv32i
 
 #endif

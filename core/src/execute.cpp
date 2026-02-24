@@ -1,13 +1,13 @@
 #include "../include/execute.hpp"
 #include "../include/decode.hpp"
-#include "../include/exception.hpp" // your custom exceptions
+#include "../include/exception.hpp"
 #include "../include/instruction.hpp"
 #include "../include/memory.hpp"
 #include "../include/register.hpp"
 #include <cstdint>
 #include <sys/types.h>
 
-namespace riscv {
+namespace rv32i {
 namespace execute {
 
 uint32_t execute_r_type(const DecodedInstruction &d_instr, uint32_t current_pc,
@@ -26,6 +26,10 @@ uint32_t execute_r_type(const DecodedInstruction &d_instr, uint32_t current_pc,
       rd = rs1 + rs2; // ADD
     } else if (d_instr.funct7 == funct7::SUB_SRA) {
       rd = rs1 - rs2; // SUB
+    } else if (d_instr.funct7 == funct7::M_EXT) {
+      rd = static_cast<uint32_t>(
+          static_cast<int64_t>(static_cast<int32_t>(rs1)) *
+          static_cast<int64_t>(static_cast<int32_t>(rs2)));
     } else {
       throw IllegalInstructionException("R‑type ADD/SUB with wrong funct7");
     }
@@ -34,6 +38,17 @@ uint32_t execute_r_type(const DecodedInstruction &d_instr, uint32_t current_pc,
   case funct3::XOR:                       // XOR = 4
     if (d_instr.funct7 == funct7::BASE) { // BASE = 0
       rd = rs1 ^ rs2;
+    } else if (d_instr.funct7 == funct7::M_EXT) {
+      // DIVISON - DIV
+      if (rs2 == 0) {
+        rd = 0xFFFFFFFFu; //-1 division by zero
+      } else if (static_cast<int32_t>(rs1) == INT32_MIN &&
+                 static_cast<int32_t>(rs2) == -1) {
+        rd = rs1; // overflow: result = dividend.
+      } else {
+        rd =
+            static_cast<int32_t>(rs1) / static_cast<int32_t>(rs2); // div signed
+      }
     } else {
       throw IllegalInstructionException("R‑type XOR with wrong funct7");
     }
@@ -42,14 +57,30 @@ uint32_t execute_r_type(const DecodedInstruction &d_instr, uint32_t current_pc,
   case funct3::OR: // or = 6 0b
     if (d_instr.funct7 == funct7::BASE) {
       rd = rs1 | rs2;
+    } else if (d_instr.funct7 == funct7::M_EXT) {
+      // Remainder - REM (signed)
+      if (rs2 == 0) {
+        rd = rs1; // remainder the number we divide into
+      } else if (static_cast<int32_t>(rs1) == INT32_MIN &&
+                 static_cast<int32_t>(rs2) == -1) {
+        rd = 0; // remainder 0
+      } else {
+        rd = static_cast<int32_t>(rs1) % static_cast<int32_t>(rs2); // rem
+      }
     } else {
       throw IllegalInstructionException("R‑type OR with wrong funct7");
     }
     break;
 
-  case funct3::AND:
+  case funct3::AND: // 7
     if (d_instr.funct7 == funct7::BASE) {
       rd = rs1 & rs2;
+    } else if (d_instr.funct7 == funct7::M_EXT) {
+      if (rs2 == 0) {
+        rd = rs1;
+      } else {
+        rd = rs1 % rs2; // remu
+      }
     } else {
       throw IllegalInstructionException("R‑type AND with wrong funct7");
     }
@@ -58,6 +89,11 @@ uint32_t execute_r_type(const DecodedInstruction &d_instr, uint32_t current_pc,
   case funct3::SLL:
     if (d_instr.funct7 == funct7::BASE) {
       rd = rs1 << (rs2 & 0x1F);
+    } else if (d_instr.funct7 == funct7::M_EXT) {
+      // mulh (signed * signed, high = 63 bit - 32 bit)
+      rd = (static_cast<int64_t>(static_cast<int32_t>(rs1)) *
+            static_cast<int64_t>(static_cast<int32_t>(rs2))) >>
+           32;
     } else {
       throw IllegalInstructionException("R‑type SLL with wrong funct7");
     }
@@ -68,6 +104,13 @@ uint32_t execute_r_type(const DecodedInstruction &d_instr, uint32_t current_pc,
       rd = static_cast<int32_t>(rs1) >> (rs2 & 0x1F); // SRA
     } else if (d_instr.funct7 == funct7::BASE) {
       rd = rs1 >> (rs2 & 0x1F); // SRL
+    } else if (d_instr.funct7 == funct7::M_EXT) {
+      // divu unsigned unsigned low
+      if (rs2 == 0) {
+        rd = 0xFFFFFFFFu;
+      } else {
+        rd = rs1 / rs2;
+      }
     } else {
       throw IllegalInstructionException("R‑type SRL/SRA with wrong funct7");
     }
@@ -76,6 +119,11 @@ uint32_t execute_r_type(const DecodedInstruction &d_instr, uint32_t current_pc,
   case funct3::SLT:
     if (d_instr.funct7 == funct7::BASE) {
       rd = (static_cast<int32_t>(rs1) < static_cast<int32_t>(rs2)) ? 1u : 0u;
+    } else if (d_instr.funct7 == funct7::M_EXT) {
+      // mulsu: signed * unsigned high = 63bit - 32bit
+      rd = (static_cast<int64_t>(static_cast<int32_t>(rs1)) *
+            static_cast<uint64_t>(rs2)) >>
+           32;
     } else {
       throw IllegalInstructionException("R‑type SLT with wrong funct7");
     }
@@ -84,6 +132,9 @@ uint32_t execute_r_type(const DecodedInstruction &d_instr, uint32_t current_pc,
   case funct3::SLTU:
     if (d_instr.funct7 == funct7::BASE) {
       rd = (rs1 < rs2) ? 1u : 0u;
+    } else if (d_instr.funct7 == funct7::M_EXT) {
+      // mulu: multip unsigned high
+      rd = (static_cast<uint64_t>(rs1) * static_cast<uint64_t>(rs2)) >> 32;
     } else {
       throw IllegalInstructionException("R‑type SLTU with wrong funct7");
     }
@@ -283,4 +334,4 @@ uint32_t execute_j_type(const DecodedInstruction &d_instr, uint32_t current_pc,
 }
 
 } // namespace execute
-} // namespace riscv
+} // namespace rv32i

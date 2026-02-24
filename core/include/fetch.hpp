@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-namespace riscv {
+namespace rv32i {
 
 class Memory;
 
@@ -12,6 +12,6 @@ namespace fetch {
 uint32_t fetch_instruction(uint32_t pc, const Memory &mem);
 
 } // namespace fetch
-} // namespace riscv
+} // namespace rv32i
 
 #endif

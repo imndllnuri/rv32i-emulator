@@ -11,8 +11,8 @@
     }                                                                          \
   } while (0)
 
-namespace riscv {
-// Helper: B‑tipi komut kelimesi oluştur
+namespace rv32i {
+// create b-type instruction
 uint32_t make_b_type(uint32_t funct3, uint32_t rs1, uint32_t rs2, int32_t imm) {
   uint32_t uimm = static_cast<uint32_t>(imm);
   uint32_t imm12 = (uimm >> 12) & 1;
@@ -23,10 +23,10 @@ uint32_t make_b_type(uint32_t funct3, uint32_t rs1, uint32_t rs2, int32_t imm) {
          (funct3 << 12) | (imm4_1 << 8) | (imm11 << 7) |
          0b1100011; // BRANCH opcode
 }
-} // namespace riscv
+} // namespace rv32i
 
 int main() {
-  using namespace riscv;
+  using namespace rv32i;
 
   CPU cpu;
   cpu.reset();
@@ -34,7 +34,7 @@ int main() {
   // BEQ x1, x2, +8   (funct3=0)
   uint32_t instr = make_b_type(0x0, 1, 2, 8);
 
-  // Test 1: Eşit değil – dallanma alınmaz
+  // Test 1: not equal so not taken
   cpu.set_register(CPU::Reg::ra, 10); // x1 = 10
   cpu.set_register(CPU::Reg::sp, 20); // x2 = 20
   cpu.write_memory_word(cpu.get_pc(), instr);
@@ -42,7 +42,7 @@ int main() {
   TEST(cpu.get_pc() == TEXT_START + 4, "BEQ not taken, PC += 4");
   TEST(cpu.registers_state()[0] == 0, "x0 unchanged");
 
-  // Test 2: Eşit – dallanma alınır (+8)
+  // Test 2: equal so it is taken
   cpu.reset();
   cpu.set_register(CPU::Reg::ra, 42);
   cpu.set_register(CPU::Reg::sp, 42);
@@ -50,7 +50,7 @@ int main() {
   cpu.step();
   TEST(cpu.get_pc() == TEXT_START + 8, "BEQ taken, PC += 8");
 
-  // Test 3: Negatif offset (–12)
+  // Test 3: negative offset (–12)
   cpu.reset();
   cpu.set_register(CPU::Reg::ra, 100);
   cpu.set_register(CPU::Reg::sp, 100);
@@ -58,7 +58,7 @@ int main() {
   cpu.step();
   TEST(cpu.get_pc() == TEXT_START - 12, "BEQ taken, PC += -12");
 
-  // Test 4: Sıfır offset (döngü)
+  // Test 4: zero offset (döngü)
   cpu.reset();
   cpu.set_register(CPU::Reg::ra, 7);
   cpu.set_register(CPU::Reg::sp, 7);
@@ -66,7 +66,7 @@ int main() {
   cpu.step();
   TEST(cpu.get_pc() == TEXT_START, "BEQ taken, PC unchanged (offset 0)");
 
-  // Test 5: Kayıt değişmediğinden emin ol
+  // Test 5: make sure record has not changed.
   cpu.reset();
   cpu.set_register(CPU::Reg::ra, 5);
   cpu.set_register(CPU::Reg::sp, 5);

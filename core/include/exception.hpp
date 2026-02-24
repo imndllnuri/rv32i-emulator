@@ -1,7 +1,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace riscv {
+namespace rv32i {
 
 class CpuException : public std::runtime_error {
 public:
@@ -22,4 +22,4 @@ public:
 
 // Add more as needed: MisalignedAccess, PrivilegedInstruction, etc.
 
-} // namespace riscv
+} // namespace rv32i

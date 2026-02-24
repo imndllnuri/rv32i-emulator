@@ -12,7 +12,7 @@
   } while (0)
 
 int main() {
-  using namespace riscv;
+  using namespace rv32i;
 
   uint32_t instr = 0x4020D1B3;
   CPU cpu;

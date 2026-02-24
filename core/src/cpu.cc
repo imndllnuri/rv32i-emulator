@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <iostream>
 
-namespace riscv {
+namespace rv32i {
 
 CPU::CPU() : pc(0), regs{}, mem{} { reset(); }
 
@@ -77,4 +77,4 @@ void CPU::run() {
   }
 }
 
-} // namespace riscv
+} // namespace rv32i

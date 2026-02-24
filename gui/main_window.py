@@ -1,11 +1,14 @@
 import os
-from find_dialog import FindDialog
-from replace_dialog import ReplaceDialog
-from PyQt5 import uic
-from PyQt5.QtWidgets import QFileDialog, QMainWindow, QStatusBar, QDialog
-from PyQt5.QtGui import QFont
 
-UI_FILE = os.path.join(os.path.dirname(__file__), './ui/main_window.ui')
+from PyQt5 import uic
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import QDialog, QDockWidget, QFileDialog, QMainWindow, QStatusBar
+from find_dialog import FindDialog
+# from find_dialog import FindDialog
+from register_window import RegisterWidget
+from replace_dialog import ReplaceDialog
+UI_FILE = os.path.join(os.path.dirname(__file__), "./ui/main_window.ui")
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -14,12 +17,13 @@ class MainWindow(QMainWindow):
 
         self.current_file = None
 
-
         self.editor.setPlainText("Hello World!")
-        #actions
+        # actions
         self.actionNew.triggered.connect(self.new_file)
         self.actionOpen.triggered.connect(self.open_file)
-        self.actionRecent_Files.triggered.connect(lambda: self.statusbar.showMessage("Recent files triggered", 1000))  # or open recent menu
+        self.actionRecent_Files.triggered.connect(
+            lambda: self.statusbar.showMessage("Recent files triggered", 1000)
+        )  # or open recent menu
         self.actionSave.triggered.connect(self.save_file)
         self.actionSave_as.triggered.connect(self.save_file_as)
         self.actionExit.triggered.connect(self.exit_app)
@@ -35,7 +39,7 @@ class MainWindow(QMainWindow):
 
         self.actionShow_Tool_Bar.toggled.connect(self.toggle_toolbar)
         self.actionShow_Status_Bar.toggled.connect(self.toggle_statusbar)
-        self.actionShow_Registers.toggled.connect(self.toggle_registers)
+        # self.actionShow_Registers.toggled.connect(self.toggle_registers)
         self.actionShow_Memory.toggled.connect(self.toggle_memory)
         self.actionShow_Output.toggled.connect(self.toggle_output)
         self.actionShow_Tool_Bar.setChecked(True)
@@ -59,7 +63,23 @@ class MainWindow(QMainWindow):
         self.actionStep_Into.triggered.connect(self.step_into)
         self.actionStep_Onto.triggered.connect(self.step_onto)
         self.actionStep_Out.triggered.connect(self.step_out)
+        
+        self.register_dock = QDockWidget("Registers", self)
+        self.register_widget = RegisterWidget(self)
+        self.register_dock.setWidget(self.register_widget)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.register_dock)
+        self.register_dock.setVisible(False)                # hidden by default
 
+        # Forward status messages from register widget to main status bar
+        self.register_widget.statusMessage.connect(self.statusbar.showMessage)
+
+        # When the internal Close button is clicked, hide the dock
+        self.register_widget.closeRequested.connect(self.register_dock.hide)
+
+        # Synchronize menu action with dock visibility
+        self.actionShow_Registers.toggled.connect(self.on_show_registers_toggled)
+        self.register_dock.visibilityChanged.connect(self.actionShow_Registers.setChecked)
+    
     def new_file(self):
         self.statusbar.showMessage("New file triggered", 1000)
         self.editor.clear()
@@ -84,7 +104,7 @@ class MainWindow(QMainWindow):
             self.statusbar.showMessage(f"Selected file: {file_path}", 3000)
 
             try:
-                with open(file_path, 'r') as f:
+                with open(file_path, "r") as f:
                     content = f.read()
                 self.editor.setPlainText(content)
                 self.current_file = file_path
@@ -101,7 +121,7 @@ class MainWindow(QMainWindow):
         if self.current_file:
             # we already have a file saved before we can save it.
             try:
-                with open(self.current_file, 'w') as f:
+                with open(self.current_file, "w") as f:
                     f.write(self.editor.toPlainText())
                 self.statusbar.showMessage(f"Saved {self.current_file}", 3000)
                 # we have just saved it so there is not any modification yet (clean state)
@@ -109,9 +129,8 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 self.statusbar.showMessage(f"Error saving: {str(e)}", 5000)
         else:
-            #if self.current_file = false we should behave as save_file_as
+            # if self.current_file = false we should behave as save_file_as
             self.save_file_as()
-
 
     def save_file_as(self):
         self.statusbar.showMessage("Save as triggered", 1000)
@@ -119,15 +138,17 @@ class MainWindow(QMainWindow):
         # Use a dialog that enforces a default suffix
         dialog = QFileDialog(self)
         dialog.setWindowTitle("Save File As")
-        dialog.setNameFilter("Assembly Files (*.x68);;Assembly Files (*.asm);;Text Files (*.txt);;All Files (*)")
-        dialog.setDefaultSuffix("x68")   # appends .x68 if no extension typed
+        dialog.setNameFilter(
+            "Assembly Files (*.x68);;Assembly Files (*.asm);;Text Files (*.txt);;All Files (*)"
+        )
+        dialog.setDefaultSuffix("x68")  # appends .x68 if no extension typed
         dialog.setAcceptMode(QFileDialog.AcceptSave)
 
         if dialog.exec():
             file_path = dialog.selectedFiles()[0]
             self.current_file = file_path
             try:
-                with open(file_path, 'w') as f:
+                with open(file_path, "w") as f:
                     f.write(self.editor.toPlainText())
                 self.setWindowTitle(f"emulator-linux – {file_path}")
                 self.statusbar.showMessage(f"Saved as {file_path}", 3000)
@@ -148,7 +169,6 @@ class MainWindow(QMainWindow):
     def redo(self):
         self.statusbar.showMessage("Redo triggered", 1000)
         self.editor.redo()
-
     def cut(self):
         self.statusbar.showMessage("Cut triggered", 1000)
         self.editor.cut()
@@ -184,9 +204,15 @@ class MainWindow(QMainWindow):
         self.statusbar.showMessage(f"Status bar toggled: {checked}", 1000)
         self.statusbar.setVisible(checked)
 
-    def toggle_registers(self, checked):
+    def on_show_registers_toggled(self, checked):
+        """Show or hide the register dock when the menu action is toggled."""
         self.statusbar.showMessage(f"Registers window toggled: {checked}", 1000)
-        # TODO: show/hide registers dock
+        
+        self.register_dock.setVisible(checked)
+    # def toggle_registers(self, checked):
+    #     self.statusbar.showMessage(f"Registers window toggled: {checked}", 1000)
+    #     # register_window = Register_window()
+    #     # TODO: show/hide registers dock
 
     def toggle_memory(self, checked):
         self.statusbar.showMessage(f"Memory view toggled: {checked}", 1000)

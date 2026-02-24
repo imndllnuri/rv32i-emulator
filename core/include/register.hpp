@@ -1,3 +1,23 @@
+// Register ABI Name Description Saver
+// x0 zero Zero constant —
+// x1 ra Return address Callee
+// x2 sp Stack pointer Callee
+// x3 gp Global pointer —
+// x4 tp Thread pointer —
+// x5-x7 t0-t2 Temporaries Caller
+// x8 s0 / fp Saved / frame pointer Callee
+// x9 s1 Saved register Callee
+// x10-x11 a0-a1 Fn args/return values Caller
+// x12-x17 a2-a7 Fn args Caller
+// x18-x27 s2-s11 Saved registers Callee
+// x28-x31 t3-t6 Temporaries Caller
+// f0-7 ft0-7 FP temporaries Caller
+// f8-9 fs0-1 FP saved registers Callee
+// f10-11 fa0-1 FP args/return values Caller
+// f12-17 fa2-7 FP args Caller
+// f18-27 fs2-11 FP saved registers Callee
+// f28-31 ft8-11 FP temporaries Caller
+//
 #ifndef RISCV_REGISTER_HPP
 #define RISCV_REGISTER_HPP
 
@@ -5,7 +25,7 @@
 #include <cassert>
 #include <cstdint>
 
-namespace riscv {
+namespace rv32i {
 
 class RegisterFile {
 public:
@@ -35,6 +55,6 @@ private:
   std::array<uint32_t, 32> regs{};
 };
 
-} // namespace riscv
+} // namespace rv32i
 
 #endif

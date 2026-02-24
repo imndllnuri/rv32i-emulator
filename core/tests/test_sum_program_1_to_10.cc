@@ -12,7 +12,7 @@
     }                                                                          \
   } while (0)
 
-namespace riscv {
+namespace rv32i {
 
 // Helper'lar
 uint32_t make_i_type(uint32_t funct3, uint32_t rs1, uint32_t rd, int32_t imm) {
@@ -40,10 +40,10 @@ uint32_t make_ebreak() {
   return (1 << 20) | (0 << 15) | (0 << 12) | (0 << 7) | 0b1110011; // imm=1
 }
 
-} // namespace riscv
+} // namespace rv32i
 
 int main() {
-  using namespace riscv;
+  using namespace rv32i;
 
   CPU cpu;
   cpu.reset();

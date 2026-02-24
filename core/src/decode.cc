@@ -1,7 +1,8 @@
 #include "../include/decode.hpp"
 #include "../include/exception.hpp"
 #include "../include/instruction.hpp"
-namespace riscv {
+
+namespace rv32i {
 
 static int32_t imm_i(uint32_t instr) {
   return static_cast<int32_t>(instr) >> 20;
@@ -89,4 +90,4 @@ DecodedInstruction decode(uint32_t instr) {
   return d;
 }
 
-} // namespace riscv
+} // namespace rv32i

@@ -12,7 +12,7 @@
   } while (0)
 
 int main() {
-  using namespace riscv;
+  using namespace rv32i;
 
   // OR x3, x1, x2  (funct7=0, funct3=6, opcode=0x33)
   // Encoding: 0x60C1B3  (funct7=0, rs2=2, rs1=1, funct3=6, rd=3, opcode=0x33)

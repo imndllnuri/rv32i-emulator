@@ -12,7 +12,7 @@
   } while (0)
 
 int main() {
-  using namespace riscv;
+  using namespace rv32i;
 
   // 1. Create CPU
   CPU cpu;

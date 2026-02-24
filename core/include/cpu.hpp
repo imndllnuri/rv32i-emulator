@@ -9,13 +9,13 @@
 #include <cstdint>
 #include <vector>
 
-namespace riscv {
+namespace rv32i {
 
 class CPU {
 public:
-  constexpr static uint32_t MEMORY_SIZE = riscv::MEMORY_SIZE;
-  constexpr static uint32_t TEXT_START = riscv::TEXT_START;
-  constexpr static uint32_t STACK_TOP = riscv::STACK_TOP;
+  constexpr static uint32_t MEMORY_SIZE = rv32i::MEMORY_SIZE;
+  constexpr static uint32_t TEXT_START = rv32i::TEXT_START;
+  constexpr static uint32_t STACK_TOP = rv32i::STACK_TOP;
 
   enum class Reg : uint32_t {
     zero = 0,
@@ -117,6 +117,6 @@ private:
                           uint32_t current_pc);
 };
 
-} // namespace riscv
+} // namespace rv32i
 
 #endif

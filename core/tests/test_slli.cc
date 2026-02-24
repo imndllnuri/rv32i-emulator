@@ -11,7 +11,7 @@
     }                                                                          \
   } while (0)
 
-namespace riscv {
+namespace rv32i {
 // For shifts, we need to set the shamt in bits 20-24 and funct7 in bits 25-31.
 uint32_t make_shift_i_type(uint32_t funct3, uint32_t funct7, uint32_t rs1,
                            uint32_t rd, uint32_t shamt) {
@@ -21,10 +21,10 @@ uint32_t make_shift_i_type(uint32_t funct3, uint32_t funct7, uint32_t rs1,
        0x1F); // 12-bit immediate: upper 7 bits = funct7, lower 5 = shamt
   return (imm << 20) | (rs1 << 15) | (funct3 << 12) | (rd << 7) | 0x13;
 }
-} // namespace riscv
+} // namespace rv32i
 
 int main() {
-  using namespace riscv;
+  using namespace rv32i;
 
   // SLLI x3, x1, 1   (funct3=1, funct7=0)
   uint32_t instr = make_shift_i_type(0x1, 0x00, 1, 3, 1);

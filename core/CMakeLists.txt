@@ -18,10 +18,14 @@ file(GLOB CORE_SOURCES
     "src/*.cc"
     "src/device/*.cpp"
     "instructions/*.cc"
+    # "main.cpp"
 )
 
 # Create the core library
 add_library(riscv_core STATIC ${CORE_SOURCES})
+
+add_executable(emulator main.cc)
+target_link_libraries(emulator PRIVATE riscv_core)
 
 # Ensure the include directory is available to the library itself
 target_include_directories(riscv_core PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)

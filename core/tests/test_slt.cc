@@ -12,7 +12,7 @@
   } while (0)
 
 int main() {
-  using namespace riscv;
+  using namespace rv32i;
 
   // SLT x3, x1, x2  (funct7=0, funct3=2, opcode=0x33)
   // Encoding: 0x20C1B3

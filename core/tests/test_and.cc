@@ -13,10 +13,10 @@
   } while (0)
 
 int main() {
-  using namespace riscv;
+  using namespace rv32i;
 
   // AND x3, x1, x2  (funct7=0, funct3=7, opcode=0x33)
-  // Encoding: 0x70C1B3
+  // Encoding: x0020F1B3
   uint32_t instr = 0x0020F1B3;
 
   CPU cpu;

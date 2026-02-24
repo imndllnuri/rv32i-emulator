@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <vector>
 
-namespace riscv {
+namespace rv32i {
 
 class MemoryAccessException : public std::runtime_error {
 public:
@@ -74,6 +74,6 @@ private:
   std::array<uint8_t, MEMORY_SIZE> memory;
 };
 
-} // namespace riscv
+} // namespace rv32i
 
 #endif

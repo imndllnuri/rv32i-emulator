@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-namespace riscv {
+namespace rv32i {
 
 // Compact decoded instruction – ready for execution
 struct DecodedInstruction {
@@ -22,6 +22,6 @@ struct DecodedInstruction {
 // Decode a raw 32‑bit instruction into a DecodedInstruction struct
 DecodedInstruction decode(uint32_t instr);
 
-} // namespace riscv
+} // namespace rv32i
 
 #endif

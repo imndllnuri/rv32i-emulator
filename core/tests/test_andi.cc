@@ -11,15 +11,15 @@
     }                                                                          \
   } while (0)
 
-namespace riscv {
+namespace rv32i {
 uint32_t make_i_type(uint32_t funct3, uint32_t rs1, uint32_t rd, int32_t imm) {
   uint32_t uimm = static_cast<uint32_t>(imm) & 0xFFF;
   return (uimm << 20) | (rs1 << 15) | (funct3 << 12) | (rd << 7) | 0x13;
 }
-} // namespace riscv
+} // namespace rv32i
 
 int main() {
-  using namespace riscv;
+  using namespace rv32i;
 
   // ANDI x3, x1, 0xF0   (funct3=7)
   uint32_t instr = make_i_type(0x7, 1, 3, 0xF0);

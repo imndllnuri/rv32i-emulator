@@ -11,15 +11,15 @@
     }                                                                          \
   } while (0)
 
-namespace riscv {
+namespace rv32i {
 uint32_t make_load(uint32_t funct3, uint32_t rs1, uint32_t rd, int32_t imm) {
   uint32_t uimm = static_cast<uint32_t>(imm) & 0xFFF;
   return (uimm << 20) | (rs1 << 15) | (funct3 << 12) | (rd << 7) | 0x03;
 }
-} // namespace riscv
+} // namespace rv32i
 
 int main() {
-  using namespace riscv;
+  using namespace rv32i;
 
   CPU cpu;
   cpu.reset();

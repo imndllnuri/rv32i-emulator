@@ -12,7 +12,7 @@
   } while (0)
 
 int main() {
-  using namespace riscv;
+  using namespace rv32i;
 
   // SUB x3, x1, x2  (funct7=0x20, funct3=0, opcode=0x33)
   // Encoding: 0x402081B3

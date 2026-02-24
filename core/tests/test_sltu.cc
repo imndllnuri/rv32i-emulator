@@ -12,7 +12,7 @@
   } while (0)
 
 int main() {
-  using namespace riscv;
+  using namespace rv32i;
 
   // SLTU x3, x1, x2  (funct7=0, funct3=3, opcode=0x33)
   // Encoding: 0x30C1B3

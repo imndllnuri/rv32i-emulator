@@ -11,7 +11,7 @@
     }                                                                          \
   } while (0)
 
-namespace riscv {
+namespace rv32i {
 
 // Helper to build R-type instruction word
 uint32_t make_r_type(uint32_t funct7, uint32_t rs2, uint32_t rs1,
@@ -20,10 +20,10 @@ uint32_t make_r_type(uint32_t funct7, uint32_t rs2, uint32_t rs1,
          (rd << 7) | 0x33;
 }
 
-} // namespace riscv
+} // namespace rv32i
 
 int main() {
-  using namespace riscv;
+  using namespace rv32i;
 
   CPU cpu;
   cpu.reset();

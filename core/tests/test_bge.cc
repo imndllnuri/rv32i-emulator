@@ -11,7 +11,7 @@
     }                                                                          \
   } while (0)
 
-namespace riscv {
+namespace rv32i {
 uint32_t make_b_type(uint32_t funct3, uint32_t rs1, uint32_t rs2, int32_t imm) {
   uint32_t uimm = static_cast<uint32_t>(imm);
   uint32_t imm12 = (uimm >> 12) & 1;
@@ -22,10 +22,10 @@ uint32_t make_b_type(uint32_t funct3, uint32_t rs1, uint32_t rs2, int32_t imm) {
          (funct3 << 12) | (imm4_1 << 8) | (imm11 << 7) |
          0b1100011; // BRANCH opcode
 }
-} // namespace riscv
+} // namespace rv32i
 
 int main() {
-  using namespace riscv;
+  using namespace rv32i;
 
   CPU cpu;
   cpu.reset();
