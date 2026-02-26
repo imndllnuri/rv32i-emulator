@@ -1,13 +1,70 @@
 import os
+import sys
+import subprocess
+import tempfile
 
 from PyQt5 import uic
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QDialog, QDockWidget, QFileDialog, QMainWindow, QStatusBar
+from PyQt5.QtWidgets import QDialog, QDockWidget, QFileDialog, QMainWindow, QMessageBox 
+
 from find_dialog import FindDialog
-# from find_dialog import FindDialog
 from register_window import RegisterWidget
 from replace_dialog import ReplaceDialog
+
+# Add the path to the compiled pybind11 module
+module_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../core/build"))
+if module_path not in sys.path:
+    sys.path.insert(0, module_path)
+
+import rv32i_core
+
+from PyQt5.QtCore import QThread, pyqtSignal
+
+class RunWorker(QThread):
+    # Emits the new register snapshot after each step
+    step_done = pyqtSignal(list)
+    finished = pyqtSignal()
+    error = pyqtSignal(str)
+
+    # How many instructions to execute before yielding to the GUI.
+    # Larger = faster execution, smaller = more responsive UI updates.
+    BATCH_SIZE = 100
+
+    def __init__(self, cpu, max_steps=10_000_000, parent=None):
+        super().__init__(parent)
+        self.cpu = cpu
+        self._is_running = True
+        # Safety cap so an infinite loop (j halt) doesn't spin forever.
+        # Set to 0 to disable the cap.
+        self.max_steps = max_steps
+
+    def stop(self):
+        self._is_running = False
+
+    def run(self):
+        steps = 0
+        while self._is_running:
+            if self.max_steps and steps >= self.max_steps:
+                # Reached the cap – treat it like a normal halt
+                break
+            try:
+                success = self.cpu.step()
+                steps += 1
+                if not success:
+                    break
+                # Emit a register snapshot every BATCH_SIZE instructions so
+                # the table doesn't repaint on every single step (too slow).
+                if steps % self.BATCH_SIZE == 0:
+                    self.step_done.emit(list(self.cpu.get_registers()))
+            except Exception as e:
+                self.error.emit(str(e))
+                break
+
+        # Always emit a final snapshot so the display is up-to-date
+        self.step_done.emit(list(self.cpu.get_registers()))
+        self.finished.emit()
+
 UI_FILE = os.path.join(os.path.dirname(__file__), "./ui/main_window.ui")
 
 class MainWindow(QMainWindow):
@@ -16,6 +73,11 @@ class MainWindow(QMainWindow):
         uic.loadUi(UI_FILE, self)
 
         self.current_file = None
+        self.cpu = rv32i_core.CPU()
+        self.running = False
+        self.worker = None
+        self.cpu.reset()
+        self.program_loaded = False
 
         self.editor.setPlainText("Hello World!")
         # actions
@@ -63,7 +125,7 @@ class MainWindow(QMainWindow):
         self.actionStep_Into.triggered.connect(self.step_into)
         self.actionStep_Onto.triggered.connect(self.step_onto)
         self.actionStep_Out.triggered.connect(self.step_out)
-        
+
         self.register_dock = QDockWidget("Registers", self)
         self.register_widget = RegisterWidget(self)
         self.register_dock.setWidget(self.register_widget)
@@ -79,7 +141,7 @@ class MainWindow(QMainWindow):
         # Synchronize menu action with dock visibility
         self.actionShow_Registers.toggled.connect(self.on_show_registers_toggled)
         self.register_dock.visibilityChanged.connect(self.actionShow_Registers.setChecked)
-    
+
     def new_file(self):
         self.statusbar.showMessage("New file triggered", 1000)
         self.editor.clear()
@@ -207,7 +269,7 @@ class MainWindow(QMainWindow):
     def on_show_registers_toggled(self, checked):
         """Show or hide the register dock when the menu action is toggled."""
         self.statusbar.showMessage(f"Registers window toggled: {checked}", 1000)
-        
+
         self.register_dock.setVisible(checked)
     # def toggle_registers(self, checked):
     #     self.statusbar.showMessage(f"Registers window toggled: {checked}", 1000)
@@ -241,13 +303,151 @@ class MainWindow(QMainWindow):
         font.setFixedPitch(True)
         self.editor.setFont(font)
 
+    def update_register_display(self, reg_values=None):
+        """Update the register dock with current CPU register values.
+
+        Pass reg_values directly (from the worker thread signal) to avoid
+        calling cpu.get_registers() from the GUI thread while the worker
+        might still be running.
+        """
+        if not self.program_loaded:
+            return
+        if reg_values is None:
+            reg_values = list(self.cpu.get_registers())
+        self.register_widget.update_registers(reg_values)
+        # Keep the PC field in sync (safe to call from GUI thread)
+        pc = self.cpu.get_pc()
+        if hasattr(self, 'programCounterEdit'):
+            self.programCounterEdit.setText(f"0x{pc:08X}")
+
     def assemble(self):
-        self.statusbar.showMessage("Assemble triggered", 1000)
-        # TODO: call external assembler
+        # 1. Check if there is a current file (saved)
+        if not self.current_file:
+            # No file saved yet – prompt to save as first
+            reply = QMessageBox.question(
+                self,
+                "Save File",
+                "You need to save the assembly file before assembling.\nSave now?",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            if reply == QMessageBox.Yes:
+                self.save_file_as()          # this will set self.current_file if successful
+                if not self.current_file:    # user cancelled or error
+                    return
+            else:
+                self.statusbar.showMessage("Assembly cancelled.", 3000)
+                return
+
+        # 2. Determine output binary path (same directory, same base name, .bin extension)
+        base, _ = os.path.splitext(self.current_file)
+        bin_file = base + ".bin"
+
+        # 3. Write current editor content to the existing .s/.asm file (overwrite)
+        try:
+            with open(self.current_file, "w") as f:
+                f.write(self.editor.toPlainText())
+        except Exception as e:
+            self.statusbar.showMessage(f"Error writing assembly file: {e}", 5000)
+            return
+
+        # 4. Assemble using riscv64-unknown-elf-as and objcopy
+        try:
+            # Step 4a: assemble to ELF (temporary file, because we only need binary)
+            # We'll assemble directly to a temporary ELF and then objcopy to bin.
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix='.elf', delete=False) as tmp_elf:
+                elf_path = tmp_elf.name
+
+            subprocess.run(
+                ["riscv64-unknown-elf-as", "-march=rv32im", "-o", elf_path, self.current_file],
+                check=True, capture_output=True, text=True
+            )
+
+            # Step 4b: convert ELF to binary at desired location
+            subprocess.run(
+                ["riscv64-unknown-elf-objcopy", "-O", "binary", elf_path, bin_file],
+                check=True, capture_output=True, text=True
+            )
+
+            # Clean up temporary ELF
+            os.unlink(elf_path)
+
+        except subprocess.CalledProcessError as e:
+            self.statusbar.showMessage(f"Assembly failed: {e.stderr}", 5000)
+            return
+        except FileNotFoundError as e:
+            self.statusbar.showMessage(
+                "Toolchain not found. Ensure 'riscv64-unknown-elf-as' and 'objcopy' are in PATH.",
+                5000
+            )
+            return
+
+        # 5. Load the binary into the CPU
+        try:
+            with open(bin_file, "rb") as f:
+                program_bytes = f.read()
+            self.cpu.reset()
+            self.cpu.load_program(list(program_bytes))   # load at default TEXT_START
+            self.program_loaded = True
+            self.statusbar.showMessage(
+                f"Assembled and loaded {os.path.basename(bin_file)} successfully.",
+                3000
+            )
+            self.update_register_display()   # reset registers to zero
+        except Exception as e:
+            self.statusbar.showMessage(f"Failed to load binary into CPU: {e}", 5000)
 
     def run(self):
-        self.statusbar.showMessage("Run triggered", 1000)
-        # TODO: start simulator
+        if not self.program_loaded:
+            self.statusbar.showMessage("No program loaded. Assemble first.", 3000)
+            return
+        # If already running, clicking Run again stops it (toggle behaviour)
+        if self.running:
+            self.worker.stop()
+            return
+
+        self.running = True
+        self.actionRun.setText("Stop")          # visual feedback
+        self.actionStep_Into.setEnabled(False)  # disable stepping while running
+
+        self.worker = RunWorker(self.cpu, max_steps=10_000_000)
+        # step_done now carries the register snapshot, so wire it directly
+        self.worker.step_done.connect(self.update_register_display)
+        self.worker.finished.connect(self.on_run_finished)
+        self.worker.error.connect(self.on_run_error)
+        self.worker.start()
+        self.statusbar.showMessage("Running…", 0)   # 0 = stay until replaced
+
+    def on_run_finished(self):
+        self.running = False
+        self.actionRun.setText("Run")
+        self.actionStep_Into.setEnabled(True)
+        self.worker = None
+        # Final register refresh (reads PC too)
+        self.update_register_display()
+        self.statusbar.showMessage("CPU halted.", 3000)
+
+    def on_run_error(self, msg):
+        self.statusbar.showMessage(f"Run error: {msg}", 5000)
+        self.on_run_finished()
+
+    def step_into(self):
+        if not self.program_loaded:
+            self.statusbar.showMessage("No program loaded. Assemble first.", 3000)
+            return
+        if self.running:
+            self.statusbar.showMessage("Stop the running program first.", 2000)
+            return
+        try:
+            success = self.cpu.step()
+            self.update_register_display()          # refresh table + PC
+            if not success:
+                self.statusbar.showMessage("CPU halted.", 3000)
+            else:
+                pc = self.cpu.get_pc()
+                self.statusbar.showMessage(f"Stepped → PC = 0x{pc:08X}", 2000)
+        except Exception as e:
+            self.statusbar.showMessage(f"Step error: {e}", 5000)
 
     def show_simulator(self):
         self.statusbar.showMessage("Show simulator triggered", 1000)
@@ -273,14 +473,10 @@ class MainWindow(QMainWindow):
         self.statusbar.showMessage("Untoggle comment triggered", 1000)
         # TODO: uncomment selected lines
 
-    def step_into(self):
-        self.statusbar.showMessage("Step Into triggered", 1000)
-        # TODO: simulator step into
-
     def step_onto(self):
-        self.statusbar.showMessage("Step Onto triggered", 1000)
-        # TODO: simulator step over
+        # Step-over logic can be added later; for now behaves like step_into
+        self.step_into()
 
     def step_out(self):
-        self.statusbar.showMessage("Step Out triggered", 1000)
-        # TODO: simulator step out
+        # Step-out logic can be added later; for now behaves like step_into
+        self.step_into()

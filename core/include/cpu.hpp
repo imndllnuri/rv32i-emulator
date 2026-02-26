@@ -68,9 +68,11 @@ public:
   void run();
 
   // Debug accessors, print register state.
-  const std::array<uint32_t, 32> registers_state() { return regs.get_array(); }
+  const std::array<uint32_t, 32> registers_state() const {
+    return regs.get_array();
+  }
 
-  uint32_t get_pc() { return pc; }
+  uint32_t get_pc() const { return pc; }
   uint8_t read_memory_byte(uint32_t addr) const { return mem.read_byte(addr); }
   uint16_t read_memory_half(uint32_t addr) const { return mem.read_half(addr); }
   uint32_t read_memory_word(uint32_t addr) const { return mem.read_word(addr); }
