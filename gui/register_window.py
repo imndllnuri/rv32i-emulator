@@ -63,7 +63,17 @@ class RegisterWidget(QWidget):
 
         # Remember these values for the next diff
         self._prev_values = list(reg_values)
+    
+    def set_pc(self, pc):
+        """Update the Program Counter display."""
+        self.pcLineEdit.setText(f"0x{pc:08X}")
+
+    def set_inst(self, inst_word):
+        """Update the Current Instruction display (hex format)."""
+        self.curInsLineEdit.setText(f"0x{inst_word:08X}")
 
     def clear_registers(self):
         self._prev_values = [0] * 32
         self.registerTable.setRowCount(0)
+        self.pcLineEdit.clear()
+        self.curInsLineEdit.clear()

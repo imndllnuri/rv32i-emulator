@@ -23,7 +23,7 @@
    <bool>false</bool>
   </property>
   <property name="windowTitle">
-   <string>Easy68k-linux</string>
+   <string>rv32i-emulator</string>
   </property>
   <property name="unifiedTitleAndToolBarOnMac">
    <bool>false</bool>
@@ -43,6 +43,9 @@
         <horstretch>0</horstretch>
         <verstretch>0</verstretch>
        </sizepolicy>
+      </property>
+      <property name="styleSheet">
+       <string notr="true"/>
       </property>
      </widget>
     </item>
@@ -159,14 +162,10 @@
    <addaction name="separator"/>
    <addaction name="actionUndo"/>
    <addaction name="actionRedo"/>
-   <addaction name="actionToggle_Comment"/>
-   <addaction name="actionUntoggle_Comment"/>
    <addaction name="separator"/>
    <addaction name="actionAssemble"/>
    <addaction name="actionRun"/>
-   <addaction name="actionStep_Into"/>
-   <addaction name="actionStep_Onto"/>
-   <addaction name="actionStep_Out"/>
+   <addaction name="actionStep"/>
    <addaction name="separator"/>
    <addaction name="actionSettings"/>
   </widget>
@@ -445,35 +444,9 @@
     <string>Information about the application</string>
    </property>
   </action>
-  <action name="actionToggle_Comment">
+  <action name="actionStep">
    <property name="text">
-    <string>Toggle Comment</string>
-   </property>
-   <property name="toolTip">
-    <string>Toggle the selected line(s)</string>
-   </property>
-  </action>
-  <action name="actionUntoggle_Comment">
-   <property name="text">
-    <string>Untoggle Comment</string>
-   </property>
-   <property name="toolTip">
-    <string>Untoggle the selected line(s)</string>
-   </property>
-  </action>
-  <action name="actionStep_Into">
-   <property name="text">
-    <string>Step Into</string>
-   </property>
-  </action>
-  <action name="actionStep_Onto">
-   <property name="text">
-    <string>Set Onto</string>
-   </property>
-  </action>
-  <action name="actionStep_Out">
-   <property name="text">
-    <string>Step Out</string>
+    <string>Step</string>
    </property>
   </action>
  </widget>

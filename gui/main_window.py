@@ -5,11 +5,12 @@ import tempfile
 
 from PyQt5 import uic
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QDialog, QDockWidget, QFileDialog, QMainWindow, QMessageBox 
+from PyQt5.QtGui import QTextCursor, QFont 
+from PyQt5.QtWidgets import QDockWidget, QFileDialog, QMainWindow, QMessageBox 
 
 from find_dialog import FindDialog
 from register_window import RegisterWidget
+from memory_window import MemoryWidget
 from replace_dialog import ReplaceDialog
 
 # Add the path to the compiled pybind11 module
@@ -23,7 +24,7 @@ from PyQt5.QtCore import QThread, pyqtSignal
 
 class RunWorker(QThread):
     # Emits the new register snapshot after each step
-    step_done = pyqtSignal(list)
+    step_done = pyqtSignal(list, int, int)
     finished = pyqtSignal()
     error = pyqtSignal(str)
 
@@ -46,23 +47,35 @@ class RunWorker(QThread):
         steps = 0
         while self._is_running:
             if self.max_steps and steps >= self.max_steps:
-                # Reached the cap – treat it like a normal halt
                 break
             try:
                 success = self.cpu.step()
                 steps += 1
                 if not success:
                     break
-                # Emit a register snapshot every BATCH_SIZE instructions so
-                # the table doesn't repaint on every single step (too slow).
                 if steps % self.BATCH_SIZE == 0:
-                    self.step_done.emit(list(self.cpu.get_registers()))
+                    regs = list(self.cpu.get_registers())
+                    pc = self.cpu.get_pc()
+                    # Read instruction word at PC (little‑endian)
+                    try:
+                        inst_bytes = self.cpu.read_memory(pc, 4)
+                        inst = int.from_bytes(inst_bytes, byteorder='little')
+                    except Exception:
+                        inst = 0
+                    self.step_done.emit(regs, pc, inst)
             except Exception as e:
                 self.error.emit(str(e))
                 break
 
-        # Always emit a final snapshot so the display is up-to-date
-        self.step_done.emit(list(self.cpu.get_registers()))
+        # Final snapshot
+        regs = list(self.cpu.get_registers())
+        pc = self.cpu.get_pc()
+        try:
+            inst_bytes = self.cpu.read_memory(pc, 4)
+            inst = int.from_bytes(inst_bytes, byteorder='little')
+        except Exception:
+            inst = 0
+        self.step_done.emit(regs, pc, inst)
         self.finished.emit()
 
 UI_FILE = os.path.join(os.path.dirname(__file__), "./ui/main_window.ui")
@@ -119,13 +132,14 @@ class MainWindow(QMainWindow):
         self.actionHelp_Contents.triggered.connect(self.help_contents)
         self.actionAbout.triggered.connect(self.about)
 
-        self.actionToggle_Comment.triggered.connect(self.toggle_comment)
-        self.actionUntoggle_Comment.triggered.connect(self.untoggle_comment)
+        # self.actionToggle_Comment.triggered.connect(self.toggle_comment)
+        # self.actionUntoggle_Comment.triggered.connect(self.untoggle_comment)
 
-        self.actionStep_Into.triggered.connect(self.step_into)
-        self.actionStep_Onto.triggered.connect(self.step_onto)
-        self.actionStep_Out.triggered.connect(self.step_out)
-
+        self.actionStep.triggered.connect(self.step)
+        # self.actionStep_Onto.triggered.connect(self.step_onto)
+        # self.actionStep_Out.triggered.connect(self.step_out)
+        
+        # //register window dock
         self.register_dock = QDockWidget("Registers", self)
         self.register_widget = RegisterWidget(self)
         self.register_dock.setWidget(self.register_widget)
@@ -141,6 +155,17 @@ class MainWindow(QMainWindow):
         # Synchronize menu action with dock visibility
         self.actionShow_Registers.toggled.connect(self.on_show_registers_toggled)
         self.register_dock.visibilityChanged.connect(self.actionShow_Registers.setChecked)
+
+        # //memory window dock
+        self.memory_dock = QDockWidget("Memory", self)
+        self.memory_widget = MemoryWidget(self)
+        self.memory_dock.setWidget(self.memory_widget)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.memory_dock)
+        self.memory_dock.setVisible(False)
+
+        self.actionShow_Memory.toggled.connect(self.memory_dock.setVisible)
+        self.memory_dock.visibilityChanged.connect(self.actionShow_Memory.setChecked)
+        # Connect the action
 
     def new_file(self):
         self.statusbar.showMessage("New file triggered", 1000)
@@ -269,16 +294,11 @@ class MainWindow(QMainWindow):
     def on_show_registers_toggled(self, checked):
         """Show or hide the register dock when the menu action is toggled."""
         self.statusbar.showMessage(f"Registers window toggled: {checked}", 1000)
-
         self.register_dock.setVisible(checked)
-    # def toggle_registers(self, checked):
-    #     self.statusbar.showMessage(f"Registers window toggled: {checked}", 1000)
-    #     # register_window = Register_window()
-    #     # TODO: show/hide registers dock
 
     def toggle_memory(self, checked):
         self.statusbar.showMessage(f"Memory view toggled: {checked}", 1000)
-        # TODO: show/hide memory dock
+        self.memory_dock.setVisible(checked)
 
     def toggle_output(self, checked):
         self.statusbar.showMessage(f"Output window toggled: {checked}", 1000)
@@ -303,20 +323,41 @@ class MainWindow(QMainWindow):
         font.setFixedPitch(True)
         self.editor.setFont(font)
 
-    def update_register_display(self, reg_values=None):
-        """Update the register dock with current CPU register values.
-
-        Pass reg_values directly (from the worker thread signal) to avoid
-        calling cpu.get_registers() from the GUI thread while the worker
-        might still be running.
-        """
+    def update_register_display(self, reg_values=None, pc=None, inst=None):
+        """Update register dock, PC, and current instruction."""
         if not self.program_loaded:
             return
-        if reg_values is None:
+
+        # Update register table
+        if reg_values is not None:
+            self.register_widget.update_registers(reg_values)
+        else:
+            # Called from step() – read CPU directly
             reg_values = list(self.cpu.get_registers())
-        self.register_widget.update_registers(reg_values)
-        # Keep the PC field in sync (safe to call from GUI thread)
-        pc = self.cpu.get_pc()
+            self.register_widget.update_registers(reg_values)
+
+        # Update PC
+        if pc is not None:
+            self.register_widget.set_pc(pc)
+        else:
+            pc = self.cpu.get_pc()
+            self.register_widget.set_pc(pc)
+
+        # Update current instruction
+        if inst is not None:
+            self.register_widget.set_inst(inst)
+        else:
+            # Fallback: read from CPU (only safe when not running)
+            try:
+                inst_bytes = self.cpu.read_memory(pc, 4)
+                inst = int.from_bytes(inst_bytes, byteorder='little')
+            except Exception:
+                inst = 0
+            self.register_widget.set_inst(inst)
+
+        # Keep other views in sync
+        if hasattr(self, 'memory_widget'):
+            self.memory_widget.update_follow_pc(pc)
         if hasattr(self, 'programCounterEdit'):
             self.programCounterEdit.setText(f"0x{pc:08X}")
 
@@ -389,6 +430,8 @@ class MainWindow(QMainWindow):
             self.cpu.reset()
             self.cpu.load_program(list(program_bytes))   # load at default TEXT_START
             self.program_loaded = True
+            # // giving cpu reference to the memory view
+            self.memory_widget.set_cpu(self.cpu) 
             self.statusbar.showMessage(
                 f"Assembled and loaded {os.path.basename(bin_file)} successfully.",
                 3000
@@ -408,7 +451,7 @@ class MainWindow(QMainWindow):
 
         self.running = True
         self.actionRun.setText("Stop")          # visual feedback
-        self.actionStep_Into.setEnabled(False)  # disable stepping while running
+        self.actionStep.setEnabled(False)  # disable stepping while running
 
         self.worker = RunWorker(self.cpu, max_steps=10_000_000)
         # step_done now carries the register snapshot, so wire it directly
@@ -421,7 +464,7 @@ class MainWindow(QMainWindow):
     def on_run_finished(self):
         self.running = False
         self.actionRun.setText("Run")
-        self.actionStep_Into.setEnabled(True)
+        self.actionStep.setEnabled(True)
         self.worker = None
         # Final register refresh (reads PC too)
         self.update_register_display()
@@ -431,7 +474,7 @@ class MainWindow(QMainWindow):
         self.statusbar.showMessage(f"Run error: {msg}", 5000)
         self.on_run_finished()
 
-    def step_into(self):
+    def step(self):
         if not self.program_loaded:
             self.statusbar.showMessage("No program loaded. Assemble first.", 3000)
             return
@@ -464,19 +507,3 @@ class MainWindow(QMainWindow):
     def about(self):
         self.statusbar.showMessage("About triggered", 1000)
         # TODO: show about dialog
-
-    def toggle_comment(self):
-        self.statusbar.showMessage("Toggle comment triggered", 1000)
-        # TODO: comment/uncomment selected lines
-
-    def untoggle_comment(self):
-        self.statusbar.showMessage("Untoggle comment triggered", 1000)
-        # TODO: uncomment selected lines
-
-    def step_onto(self):
-        # Step-over logic can be added later; for now behaves like step_into
-        self.step_into()
-
-    def step_out(self):
-        # Step-out logic can be added later; for now behaves like step_into
-        self.step_into()

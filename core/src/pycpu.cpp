@@ -43,6 +43,15 @@ public:
     cpu.write_memory_word(addr, value);
   }
 
+  std::vector<uint8_t> read_memory(uint32_t addr, uint32_t size) const {
+    std::vector<uint8_t> bytes;
+    bytes.reserve(size);
+    for (uint32_t i = 0; i < size; ++i) {
+      bytes.push_back(cpu.read_memory_byte(addr + i));
+    }
+    return bytes;
+  }
+
 private:
   rv32i::CPU cpu;
 };
@@ -64,5 +73,7 @@ PYBIND11_MODULE(rv32i_core, m) {
       .def("read_memory_word", &PyCPU::read_memory_word)
       .def("write_memory_byte", &PyCPU::write_memory_byte)
       .def("write_memory_half", &PyCPU::write_memory_half)
-      .def("write_memory_word", &PyCPU::write_memory_word);
+      .def("write_memory_word", &PyCPU::write_memory_word)
+      .def("read_memory", &PyCPU::read_memory, py::arg("addr"),
+           py::arg("size"));
 }
