@@ -2,16 +2,25 @@ import os
 import sys
 import subprocess
 import tempfile
+from collections import deque
 
 from PyQt5 import uic
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QTextCursor, QFont 
-from PyQt5.QtWidgets import QDockWidget, QFileDialog, QMainWindow, QMessageBox 
+from PyQt5.QtGui import QTextCursor, QFont
+from PyQt5.QtWidgets import (
+    QDockWidget, QFileDialog, QMainWindow, QMessageBox, QListWidget,
+    QPlainTextEdit, QStyle, QLabel,
+)
 
 from find_dialog import FindDialog
 from register_window import RegisterWidget
 from memory_window import MemoryWidget
 from replace_dialog import ReplaceDialog
+from disassembly_window import DisassemblyWidget
+from stack_window import StackWidget
+from disassembler import OPCODE_JAL, OPCODE_JALR
+from code_editor import CodeEditor
+from syntax_highlighter import AsmHighlighter
 
 # Add the path to the compiled pybind11 module
 module_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../core/build"))
@@ -24,27 +33,40 @@ from PyQt5.QtCore import QThread, pyqtSignal
 
 class RunWorker(QThread):
     # Emits the new register snapshot after each step
-    step_done = pyqtSignal(list, int, int)
+    step_done = pyqtSignal(list, int, int, int)
     finished = pyqtSignal()
+    breakpoint_hit = pyqtSignal(int)
     error = pyqtSignal(str)
 
     # How many instructions to execute before yielding to the GUI.
     # Larger = faster execution, smaller = more responsive UI updates.
     BATCH_SIZE = 100
 
-    def __init__(self, cpu, max_steps=10_000_000, parent=None):
+    def __init__(self, cpu, max_steps=10_000_000, breakpoints=None, parent=None):
         super().__init__(parent)
         self.cpu = cpu
         self._is_running = True
         # Safety cap so an infinite loop (j halt) doesn't spin forever.
         # Set to 0 to disable the cap.
         self.max_steps = max_steps
+        self.breakpoints = breakpoints or set()
 
     def stop(self):
         self._is_running = False
 
+    def _snapshot(self, steps):
+        regs = list(self.cpu.get_registers())
+        pc = self.cpu.get_pc()
+        try:
+            inst_bytes = self.cpu.read_memory(pc, 4)
+            inst = int.from_bytes(inst_bytes, byteorder='little')
+        except Exception:
+            inst = 0
+        self.step_done.emit(regs, pc, inst, steps)
+
     def run(self):
         steps = 0
+        hit_breakpoint = False
         while self._is_running:
             if self.max_steps and steps >= self.max_steps:
                 break
@@ -53,37 +75,59 @@ class RunWorker(QThread):
                 steps += 1
                 if not success:
                     break
+                if self.cpu.get_pc() in self.breakpoints:
+                    hit_breakpoint = True
+                    break
                 if steps % self.BATCH_SIZE == 0:
-                    regs = list(self.cpu.get_registers())
-                    pc = self.cpu.get_pc()
-                    # Read instruction word at PC (little‑endian)
-                    try:
-                        inst_bytes = self.cpu.read_memory(pc, 4)
-                        inst = int.from_bytes(inst_bytes, byteorder='little')
-                    except Exception:
-                        inst = 0
-                    self.step_done.emit(regs, pc, inst)
+                    self._snapshot(steps)
             except Exception as e:
                 self.error.emit(str(e))
                 break
 
         # Final snapshot
-        regs = list(self.cpu.get_registers())
-        pc = self.cpu.get_pc()
-        try:
-            inst_bytes = self.cpu.read_memory(pc, 4)
-            inst = int.from_bytes(inst_bytes, byteorder='little')
-        except Exception:
-            inst = 0
-        self.step_done.emit(regs, pc, inst)
+        self._snapshot(steps)
+        if hit_breakpoint:
+            self.breakpoint_hit.emit(self.cpu.get_pc())
         self.finished.emit()
 
 UI_FILE = os.path.join(os.path.dirname(__file__), "./ui/main_window.ui")
+
+# A single dark theme tying the editor, docks, and chrome together so the
+# app reads as one cohesive tool instead of mismatched default widgets.
+DARK_STYLE = """
+QMainWindow, QDialog { background-color: #252526; color: #D4D4D4; }
+QMenuBar { background-color: #2D2D30; color: #D4D4D4; }
+QMenuBar::item:selected { background-color: #3E3E42; }
+QMenu { background-color: #2D2D30; color: #D4D4D4; border: 1px solid #3E3E42; }
+QMenu::item:selected { background-color: #094771; }
+QToolBar { background-color: #2D2D30; border: none; spacing: 4px; padding: 2px; }
+QStatusBar { background-color: #007ACC; color: #FFFFFF; }
+QStatusBar QLabel { color: #FFFFFF; }
+QDockWidget { color: #D4D4D4; titlebar-close-icon: none; }
+QDockWidget::title { background-color: #2D2D30; padding: 4px; }
+QPlainTextEdit, QTextEdit, QLineEdit {
+    background-color: #1E1E1E; color: #D4D4D4;
+    border: 1px solid #3E3E42; selection-background-color: #264F78;
+}
+QTableWidget, QListWidget {
+    background-color: #252526; color: #D4D4D4;
+    gridline-color: #3E3E42; border: 1px solid #3E3E42;
+}
+QHeaderView::section { background-color: #2D2D30; color: #D4D4D4; border: none; padding: 4px; }
+QPushButton {
+    background-color: #3E3E42; color: #D4D4D4; border: 1px solid #555;
+    padding: 4px 10px; border-radius: 3px;
+}
+QPushButton:hover { background-color: #4E4E52; }
+QCheckBox, QLabel { color: #D4D4D4; }
+"""
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         uic.loadUi(UI_FILE, self)
+        self.setStyleSheet(DARK_STYLE)
+        self._upgrade_editor()
 
         self.current_file = None
         self.cpu = rv32i_core.CPU()
@@ -91,6 +135,9 @@ class MainWindow(QMainWindow):
         self.worker = None
         self.cpu.reset()
         self.program_loaded = False
+        self.breakpoints = set()
+        self.pc_history = deque(maxlen=50)
+        self.instructions_executed = 0
 
         self.editor.setPlainText("Hello World!")
         # actions
@@ -116,7 +163,6 @@ class MainWindow(QMainWindow):
         self.actionShow_Status_Bar.toggled.connect(self.toggle_statusbar)
         # self.actionShow_Registers.toggled.connect(self.toggle_registers)
         self.actionShow_Memory.toggled.connect(self.toggle_memory)
-        self.actionShow_Output.toggled.connect(self.toggle_output)
         self.actionShow_Tool_Bar.setChecked(True)
         self.actionShow_Status_Bar.setChecked(True)
 
@@ -136,9 +182,10 @@ class MainWindow(QMainWindow):
         # self.actionUntoggle_Comment.triggered.connect(self.untoggle_comment)
 
         self.actionStep.triggered.connect(self.step)
-        # self.actionStep_Onto.triggered.connect(self.step_onto)
-        # self.actionStep_Out.triggered.connect(self.step_out)
-        
+        self.actionStep_Over.triggered.connect(self.step_over)
+        self.actionStep_Out.triggered.connect(self.step_out)
+        self.actionPause.triggered.connect(self.pause)
+
         # //register window dock
         self.register_dock = QDockWidget("Registers", self)
         self.register_widget = RegisterWidget(self)
@@ -167,11 +214,154 @@ class MainWindow(QMainWindow):
         self.memory_dock.visibilityChanged.connect(self.actionShow_Memory.setChecked)
         # Connect the action
 
+        # //disassembly window dock
+        self.disasm_dock = QDockWidget("Disassembly", self)
+        self.disasm_widget = DisassemblyWidget(self)
+        self.disasm_dock.setWidget(self.disasm_widget)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.disasm_dock)
+        self.disasm_dock.setVisible(False)
+
+        self.disasm_widget.breakpointsChanged.connect(self.on_breakpoints_changed)
+        self.actionShow_Disassembly.toggled.connect(self.disasm_dock.setVisible)
+        self.disasm_dock.visibilityChanged.connect(self.actionShow_Disassembly.setChecked)
+
+        # //stack window dock
+        self.stack_dock = QDockWidget("Stack", self)
+        self.stack_widget = StackWidget(self)
+        self.stack_dock.setWidget(self.stack_widget)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.stack_dock)
+        self.stack_dock.setVisible(False)
+
+        self.actionShow_Stack.toggled.connect(self.stack_dock.setVisible)
+        self.stack_dock.visibilityChanged.connect(self.actionShow_Stack.setChecked)
+
+        # //PC history dock
+        self.pc_history_dock = QDockWidget("PC History", self)
+        self.pc_history_list = QListWidget(self)
+        self.pc_history_list.itemDoubleClicked.connect(self.on_pc_history_item_double_clicked)
+        self.pc_history_dock.setWidget(self.pc_history_list)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.pc_history_dock)
+        self.pc_history_dock.setVisible(False)
+
+        self.actionShow_PC_History.toggled.connect(self.pc_history_dock.setVisible)
+        self.pc_history_dock.visibilityChanged.connect(self.actionShow_PC_History.setChecked)
+
+        # //output console dock
+        self.output_dock = QDockWidget("Output", self)
+        self.output_console = QPlainTextEdit(self)
+        self.output_console.setReadOnly(True)
+        self.output_console.setMaximumBlockCount(2000)
+        self.output_console.setFont(QFont("Courier New", 10))
+        self.output_dock.setWidget(self.output_console)
+        self.addDockWidget(Qt.BottomDockWidgetArea, self.output_dock)
+        self.output_dock.setVisible(False)
+
+        self.actionShow_Output.toggled.connect(self.output_dock.setVisible)
+        self.output_dock.visibilityChanged.connect(self.actionShow_Output.setChecked)
+
+        # //permanent status bar widgets - always visible, not just transient
+        self.pc_status_label = QLabel("PC: --")
+        self.instr_status_label = QLabel("Instr: 0")
+        self.state_status_label = QLabel("Idle")
+        for label in (self.pc_status_label, self.instr_status_label, self.state_status_label):
+            label.setContentsMargins(6, 0, 6, 0)
+            self.statusbar.addPermanentWidget(label)
+
+        self._user_paused = False
+        self._setup_default_layout()
+        self._setup_icons()
+        self._update_action_states()
+
+    def _setup_default_layout(self):
+        """Arrange the docks into something usable on first launch instead
+        of an empty editor with every debugging view hidden."""
+        self.resizeDocks([self.register_dock, self.disasm_dock],
+                         [300, 300], Qt.Vertical)
+        self.splitDockWidget(self.register_dock, self.disasm_dock, Qt.Vertical)
+        self.tabifyDockWidget(self.memory_dock, self.stack_dock)
+        self.tabifyDockWidget(self.memory_dock, self.pc_history_dock)
+        self.memory_dock.raise_()
+
+        # Show a sensible starter set; the rest stay one click away in View.
+        self.actionShow_Registers.setChecked(True)
+        self.actionShow_Disassembly.setChecked(True)
+        self.actionShow_Memory.setChecked(True)
+
+    def _upgrade_editor(self):
+        """Swap the plain QPlainTextEdit from the .ui file for a CodeEditor
+        with line numbers + syntax highlighting, keeping the same object
+        name/API so the rest of the code can keep using self.editor."""
+        old_editor = self.editor
+        layout = old_editor.parentWidget().layout()
+        index = layout.indexOf(old_editor)
+
+        new_editor = CodeEditor(self)
+        new_editor.setObjectName("editor")
+        new_editor.setFont(old_editor.font())
+
+        layout.removeWidget(old_editor)
+        old_editor.deleteLater()
+        layout.insertWidget(index, new_editor)
+
+        self.editor = new_editor
+        self.highlighter = AsmHighlighter(self.editor.document())
+
+    def _setup_icons(self):
+        style = self.style()
+        icon_map = {
+            self.actionNew: QStyle.SP_FileIcon,
+            self.actionOpen: QStyle.SP_DialogOpenButton,
+            self.actionSave: QStyle.SP_DialogSaveButton,
+            self.actionSave_as: QStyle.SP_DriveFDIcon,
+            self.actionUndo: QStyle.SP_ArrowBack,
+            self.actionRedo: QStyle.SP_ArrowForward,
+            self.actionAssemble: QStyle.SP_DialogApplyButton,
+            self.actionRun: QStyle.SP_MediaPlay,
+            self.actionPause: QStyle.SP_MediaPause,
+            self.actionStep: QStyle.SP_MediaSeekForward,
+            self.actionStep_Over: QStyle.SP_MediaSkipForward,
+            self.actionStep_Out: QStyle.SP_ArrowUp,
+            self.actionSettings: QStyle.SP_FileDialogDetailedView,
+            self.actionHelp_Contents: QStyle.SP_MessageBoxQuestion,
+            self.actionAbout: QStyle.SP_MessageBoxInformation,
+        }
+        for action, std_icon in icon_map.items():
+            action.setIcon(style.standardIcon(std_icon))
+
+    def _update_action_states(self):
+        """Centralizes which execution actions make sense given the current
+        program/running state, so stale buttons don't sit there enabled
+        when clicking them would just show an error message."""
+        loaded = self.program_loaded
+        running = self.running
+        self.actionRun.setEnabled(loaded)
+        self.actionStep.setEnabled(loaded and not running)
+        self.actionStep_Over.setEnabled(loaded and not running)
+        self.actionStep_Out.setEnabled(loaded and not running)
+        self.actionPause.setEnabled(loaded and running)
+
+    def _reset_program_state(self):
+        """Clear stale program/CPU state - call when the editor content is
+        replaced (New/Open) so Run/Step don't act on a binary that no
+        longer matches what's on screen."""
+        self.program_loaded = False
+        self.running = False
+        self.instructions_executed = 0
+        self.pc_history.clear()
+        self.pc_history_list.clear()
+        self.cpu.reset()
+        self._update_action_states()
+        self.state_status_label.setText("Idle")
+        self.pc_status_label.setText("PC: --")
+        self.instr_status_label.setText("Instr: 0")
+
     def new_file(self):
         self.statusbar.showMessage("New file triggered", 1000)
         self.editor.clear()
         self.setWindowTitle("emulator-linux")
         self.editor.document().setModified(False)
+        self.current_file = None
+        self._reset_program_state()
 
     # TODO: implement multiple files opening
     def open_file(self):
@@ -198,6 +388,7 @@ class MainWindow(QMainWindow):
                 self.setWindowTitle(f"emulator-linux – {file_path}")
                 self.statusbar.showMessage(f"Opened {file_path}", 3000)
                 self.editor.document().setModified(False)
+                self._reset_program_state()
             except Exception as e:
                 self.statusbar.showMessage(f"Error opening file: {str(e)}", 5000)
         else:
@@ -300,9 +491,9 @@ class MainWindow(QMainWindow):
         self.statusbar.showMessage(f"Memory view toggled: {checked}", 1000)
         self.memory_dock.setVisible(checked)
 
-    def toggle_output(self, checked):
-        self.statusbar.showMessage(f"Output window toggled: {checked}", 1000)
-        # TODO: show/hide output dock
+    def append_output(self, text):
+        """Log a line to the Output console dock (visible via View > Show Output)."""
+        self.output_console.appendPlainText(text)
 
     def zoom_in(self):
         self.statusbar.showMessage("Zoom In triggered", 1000)
@@ -323,10 +514,13 @@ class MainWindow(QMainWindow):
         font.setFixedPitch(True)
         self.editor.setFont(font)
 
-    def update_register_display(self, reg_values=None, pc=None, inst=None):
+    def update_register_display(self, reg_values=None, pc=None, inst=None, steps=None):
         """Update register dock, PC, and current instruction."""
         if not self.program_loaded:
             return
+
+        if steps is not None:
+            self.instructions_executed = steps
 
         # Update register table
         if reg_values is not None:
@@ -358,8 +552,22 @@ class MainWindow(QMainWindow):
         # Keep other views in sync
         if hasattr(self, 'memory_widget'):
             self.memory_widget.update_follow_pc(pc)
+        if hasattr(self, 'disasm_widget'):
+            self.disasm_widget.set_pc(pc)
+        if hasattr(self, 'stack_widget'):
+            self.stack_widget.update_follow_sp(reg_values[2])
         if hasattr(self, 'programCounterEdit'):
             self.programCounterEdit.setText(f"0x{pc:08X}")
+
+        self.pc_status_label.setText(f"PC: 0x{pc:08X}")
+        self.instr_status_label.setText(f"Instr: {self.instructions_executed}")
+
+        if not self.pc_history or self.pc_history[-1] != pc:
+            self.pc_history.append(pc)
+            self.pc_history_list.addItem(f"0x{pc:08X}")
+            self.pc_history_list.scrollToBottom()
+            while self.pc_history_list.count() > self.pc_history.maxlen:
+                self.pc_history_list.takeItem(0)
 
     def assemble(self):
         # 1. Check if there is a current file (saved)
@@ -414,13 +622,13 @@ class MainWindow(QMainWindow):
             os.unlink(elf_path)
 
         except subprocess.CalledProcessError as e:
-            self.statusbar.showMessage(f"Assembly failed: {e.stderr}", 5000)
+            self.statusbar.showMessage("Assembly failed - see Output panel.", 5000)
+            self.append_output(f"Assembly failed:\n{e.stderr}")
             return
         except FileNotFoundError as e:
-            self.statusbar.showMessage(
-                "Toolchain not found. Ensure 'riscv64-unknown-elf-as' and 'objcopy' are in PATH.",
-                5000
-            )
+            msg = "Toolchain not found. Ensure 'riscv64-unknown-elf-as' and 'objcopy' are in PATH."
+            self.statusbar.showMessage(msg, 5000)
+            self.append_output(msg)
             return
 
         # 5. Load the binary into the CPU
@@ -430,15 +638,24 @@ class MainWindow(QMainWindow):
             self.cpu.reset()
             self.cpu.load_program(list(program_bytes))   # load at default TEXT_START
             self.program_loaded = True
-            # // giving cpu reference to the memory view
-            self.memory_widget.set_cpu(self.cpu) 
+            self.instructions_executed = 0
+            self.pc_history.clear()
+            self.pc_history_list.clear()
+            # // giving cpu reference to the memory/disassembly/stack views
+            self.memory_widget.set_cpu(self.cpu)
+            self.disasm_widget.set_cpu(self.cpu)
+            self.stack_widget.set_cpu(self.cpu)
+            self._update_action_states()
+            self.state_status_label.setText("Loaded")
             self.statusbar.showMessage(
                 f"Assembled and loaded {os.path.basename(bin_file)} successfully.",
                 3000
             )
+            self.append_output(f"Assembled {os.path.basename(bin_file)} successfully.")
             self.update_register_display()   # reset registers to zero
         except Exception as e:
             self.statusbar.showMessage(f"Failed to load binary into CPU: {e}", 5000)
+            self.append_output(f"Failed to load binary into CPU: {e}")
 
     def run(self):
         if not self.program_loaded:
@@ -450,29 +667,63 @@ class MainWindow(QMainWindow):
             return
 
         self.running = True
+        self._user_paused = False
         self.actionRun.setText("Stop")          # visual feedback
-        self.actionStep.setEnabled(False)  # disable stepping while running
+        self.state_status_label.setText("Running")
+        self._update_action_states()
 
-        self.worker = RunWorker(self.cpu, max_steps=10_000_000)
+        self.worker = RunWorker(self.cpu, max_steps=10_000_000,
+                                breakpoints=set(self.breakpoints))
         # step_done now carries the register snapshot, so wire it directly
         self.worker.step_done.connect(self.update_register_display)
         self.worker.finished.connect(self.on_run_finished)
+        self.worker.breakpoint_hit.connect(self.on_breakpoint_hit)
         self.worker.error.connect(self.on_run_error)
         self.worker.start()
         self.statusbar.showMessage("Running…", 0)   # 0 = stay until replaced
+        self.append_output("Run started.")
+
+    def pause(self):
+        if self.running and self.worker is not None:
+            self._user_paused = True
+            self.worker.stop()
+            self.statusbar.showMessage("Pausing…", 0)
 
     def on_run_finished(self):
         self.running = False
         self.actionRun.setText("Run")
-        self.actionStep.setEnabled(True)
+        self._update_action_states()
         self.worker = None
         # Final register refresh (reads PC too)
         self.update_register_display()
-        self.statusbar.showMessage("CPU halted.", 3000)
+        if self._user_paused:
+            self.state_status_label.setText("Paused")
+            self.statusbar.showMessage(
+                f"Paused. Executed {self.instructions_executed} instructions so far.", 3000)
+            self.append_output(f"Paused. Executed {self.instructions_executed} instructions so far.")
+        else:
+            self.state_status_label.setText("Halted")
+            self.statusbar.showMessage(
+                f"CPU halted. Executed {self.instructions_executed} instructions.", 3000)
+            self.append_output(f"CPU halted. Executed {self.instructions_executed} instructions.")
+        self._user_paused = False
 
     def on_run_error(self, msg):
         self.statusbar.showMessage(f"Run error: {msg}", 5000)
+        self.append_output(f"Run error: {msg}")
         self.on_run_finished()
+
+    def on_breakpoint_hit(self, pc):
+        self.statusbar.showMessage(f"Hit breakpoint at 0x{pc:08X}", 5000)
+        self.append_output(f"Hit breakpoint at 0x{pc:08X}")
+
+    def on_breakpoints_changed(self, breakpoints):
+        self.breakpoints = set(breakpoints)
+
+    def on_pc_history_item_double_clicked(self, item):
+        addr = int(item.text(), 16)
+        self.disasm_widget.go_to_address(addr)
+        self.memory_widget.go_to_address(addr)
 
     def step(self):
         if not self.program_loaded:
@@ -483,27 +734,113 @@ class MainWindow(QMainWindow):
             return
         try:
             success = self.cpu.step()
-            self.update_register_display()          # refresh table + PC
+            self.instructions_executed += 1
+            self.update_register_display(steps=self.instructions_executed)
             if not success:
                 self.statusbar.showMessage("CPU halted.", 3000)
             else:
                 pc = self.cpu.get_pc()
-                self.statusbar.showMessage(f"Stepped → PC = 0x{pc:08X}", 2000)
+                self.statusbar.showMessage(
+                    f"Stepped → PC = 0x{pc:08X} "
+                    f"({self.instructions_executed} instr executed)", 2000)
         except Exception as e:
             self.statusbar.showMessage(f"Step error: {e}", 5000)
 
+    def _run_until(self, target_pc, max_steps=1_000_000):
+        """Single-step in a tight loop until PC reaches target_pc, a
+        breakpoint is hit, or the CPU halts. Used by Step Over/Step Out."""
+        steps = 0
+        halted = False
+        while steps < max_steps:
+            success = self.cpu.step()
+            steps += 1
+            if not success:
+                halted = True
+                break
+            pc = self.cpu.get_pc()
+            if pc == target_pc or pc in self.breakpoints:
+                break
+
+        self.instructions_executed += steps
+        self.update_register_display(steps=self.instructions_executed)
+        if halted:
+            self.statusbar.showMessage("CPU halted.", 3000)
+        else:
+            pc = self.cpu.get_pc()
+            self.statusbar.showMessage(
+                f"Stepped → PC = 0x{pc:08X} ({steps} instr)", 3000)
+
+    def step_over(self):
+        if not self.program_loaded:
+            self.statusbar.showMessage("No program loaded. Assemble first.", 3000)
+            return
+        if self.running:
+            self.statusbar.showMessage("Stop the running program first.", 2000)
+            return
+        try:
+            pc = self.cpu.get_pc()
+            word_bytes = self.cpu.read_memory(pc, 4)
+            word = int.from_bytes(word_bytes, byteorder='little')
+            opcode = word & 0x7F
+            rd = (word >> 7) & 0x1F
+            is_call = opcode in (OPCODE_JAL, OPCODE_JALR) and rd == 1  # rd = ra
+            if is_call:
+                self._run_until(pc + 4)
+            else:
+                self.step()
+        except Exception as e:
+            self.statusbar.showMessage(f"Step Over error: {e}", 5000)
+
+    def step_out(self):
+        if not self.program_loaded:
+            self.statusbar.showMessage("No program loaded. Assemble first.", 3000)
+            return
+        if self.running:
+            self.statusbar.showMessage("Stop the running program first.", 2000)
+            return
+        try:
+            return_addr = self.cpu.get_registers()[1]  # ra
+            self._run_until(return_addr)
+        except Exception as e:
+            self.statusbar.showMessage(f"Step Out error: {e}", 5000)
+
     def show_simulator(self):
-        self.statusbar.showMessage("Show simulator triggered", 1000)
-        # TODO: open simulator window
+        """Open the full debugging layout in one click: registers,
+        disassembly, memory, stack, and PC history."""
+        for action in (self.actionShow_Registers, self.actionShow_Disassembly,
+                       self.actionShow_Memory, self.actionShow_Stack,
+                       self.actionShow_PC_History):
+            action.setChecked(True)
+        self.disasm_dock.raise_()
+        self.statusbar.showMessage("Simulator views shown.", 2000)
 
     def settings(self):
         self.statusbar.showMessage("Settings triggered", 1000)
         # TODO: open settings dialog
 
     def help_contents(self):
-        self.statusbar.showMessage("Help contents triggered", 1000)
-        # TODO: show help
+        shortcuts = (
+            "<h3>Keyboard shortcuts</h3>"
+            "<table>"
+            "<tr><td>F9</td><td>Assemble</td></tr>"
+            "<tr><td>F5</td><td>Run / Stop</td></tr>"
+            "<tr><td>F10</td><td>Step Over</td></tr>"
+            "<tr><td>Shift+F11</td><td>Step Out</td></tr>"
+            "<tr><td>F8</td><td>Show all debug views</td></tr>"
+            "<tr><td>Ctrl+S / Ctrl+Shift+S</td><td>Save / Save As</td></tr>"
+            "<tr><td>Ctrl+F / Ctrl+H</td><td>Find / Replace</td></tr>"
+            "</table>"
+            "<p>Double-click a row in the Disassembly view to toggle a "
+            "breakpoint. Use View to show/hide Registers, Memory, "
+            "Disassembly, Stack, PC History, and Output.</p>"
+        )
+        QMessageBox.information(self, "Help", shortcuts)
 
     def about(self):
-        self.statusbar.showMessage("About triggered", 1000)
-        # TODO: show about dialog
+        QMessageBox.about(
+            self, "About",
+            "<h3>RISC-V Linux Emulator</h3>"
+            "<p>A RISC-V (RV32I + RV32M) CPU emulator with a PyQt5 GUI: "
+            "assemble, run, and step through programs with live register, "
+            "memory, disassembly, and stack views.</p>"
+        )

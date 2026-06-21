@@ -12,6 +12,7 @@ CPU::CPU() : pc(0), regs{}, mem{} { reset(); }
 
 void CPU::reset() {
   regs.reset();
+  csrs.reset();
   pc = TEXT_START;
   regs.write(static_cast<uint32_t>(Reg::sp), STACK_TOP);
   // memory is not cleared incase if we want to run the same program twice, we
@@ -48,7 +49,7 @@ uint32_t CPU::execute_instruction(uint32_t instr, uint32_t current_pc) {
   case DecodedInstruction::Format::R:
     return execute::execute_r_type(d_instr, current_pc, regs, mem);
   case DecodedInstruction::Format::I:
-    return execute::execute_i_type(d_instr, current_pc, regs, mem);
+    return execute::execute_i_type(d_instr, current_pc, regs, mem, csrs);
   case DecodedInstruction::Format::S:
     return execute::execute_s_type(d_instr, current_pc, regs, mem);
   case DecodedInstruction::Format::B:

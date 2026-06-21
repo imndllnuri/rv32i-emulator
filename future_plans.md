@@ -1,10 +1,12 @@
-### 1. **Memory Viewer/Editor**
-- Show a hex dump of memory contents, with the ability to navigate to specific addresses.
+## GUI roadmap
+
+### 1. **Memory Viewer/Editor** — done (`gui/memory_window.py`, `gui/hexdump.py`)
+- Show a hex dump of memory contents, with the ability to navigate to specific addresses. ✅
 - Highlight memory regions that have been recently accessed or modified.
 - Option to edit memory values directly (useful for testing).
 
-### 2. **Disassembly View**
-- Display the current instruction (at the PC) and nearby instructions in assembly format.
+### 2. **Disassembly View** — done (`gui/disassembly_window.py`, `gui/disassembler.py`)
+- Display the current instruction (at the PC) and nearby instructions in assembly format. ✅
 - As you step, highlight the current instruction.
 - Show the raw instruction bytes alongside the disassembled mnemonic and operands.
 
@@ -13,8 +15,8 @@
 - A list of active breakpoints that can be enabled/disabled or removed.
 - When a breakpoint is hit, pause execution and highlight the line.
 
-### 4. **Stack View**
-- Show the contents near the current stack pointer (sp), with annotations for saved registers or return addresses.
+### 4. **Stack View** — done (`gui/stack_window.py`)
+- Show the contents near the current stack pointer (sp), with annotations for saved registers or return addresses. ✅
 - Helpful for understanding function calls and local variables.
 
 ### 5. **Program Counter (PC) Tracker**
@@ -50,4 +52,12 @@
 
 ### 12. **Help / About**
 - A quick reference for RISC-V instructions or your emulator's shortcuts.
+
+## ISA roadmap
+
+RV32I base + RV32M (multiply/divide) + FENCE/FENCE.I + CSR instructions (CSRRW/RS/RC/WI/SI/CI) are implemented in `core/`.
+
+Not implemented, future work:
+- **A-extension** (atomic memory operations) — not needed until multi-hart or interrupt-driven scenarios matter.
+- **F-extension** (floating point) — only worth adding if a test program needs it.
 

@@ -1,4 +1,5 @@
 #include "../include/execute.hpp"
+#include "../include/csr.hpp"
 #include "../include/decode.hpp"
 #include "../include/exception.hpp"
 #include "../include/instruction.hpp"
@@ -150,9 +151,10 @@ uint32_t execute_r_type(const DecodedInstruction &d_instr, uint32_t current_pc,
 
 // For other types, either implement or throw
 uint32_t execute_i_type(const DecodedInstruction &d_instr, uint32_t current_pc,
-                        RegisterFile &regs, Memory &mem) {
+                        RegisterFile &regs, Memory &mem, CsrFile &csrs) {
   if (d_instr.opcode != opcode::I_TYPE && d_instr.opcode != opcode::I_TYPE_L &&
-      d_instr.opcode != opcode::JALR && d_instr.opcode != opcode::SYSTEM) {
+      d_instr.opcode != opcode::JALR && d_instr.opcode != opcode::SYSTEM &&
+      d_instr.opcode != opcode::FENCE) {
     throw IllegalInstructionException("Non I-Type opcode in I-Type handler.");
   }
   uint32_t rs1 = regs.read(d_instr.rs1);
@@ -227,22 +229,56 @@ uint32_t execute_i_type(const DecodedInstruction &d_instr, uint32_t current_pc,
     regs.write(d_instr.rd, current_pc + 4);
     return target;
   } else if (d_instr.opcode == opcode::SYSTEM) {
-    // ECALL ve EBREAK: funct3=0 should be
-    if (d_instr.funct3 != 0) {
+    if (d_instr.funct3 == 0) {
+      // imm değerine göre ayırt et
+      if (d_instr.imm == 0) {
+        // ECALL
+        throw CpuException("ECALL encountered");
+      } else if (d_instr.imm == 1) {
+        // EBREAK
+        throw CpuException("EBREAK encountered");
+      } else {
+        throw IllegalInstructionException("Unknown SYSTEM immediate");
+      }
+      // NOTE: after ECALL/EBREAK pc does not move, it creates trap. We can
+      // throw exepction to mock behavior so step() returns false.
+    }
+
+    // CSR address lives in the immediate field for all CSRR* variants.
+    uint16_t csr_addr = static_cast<uint16_t>(d_instr.imm) & 0xFFF;
+    uint32_t old_val = csrs.read(csr_addr);
+    uint32_t write_val;
+
+    switch (d_instr.funct3) {
+    case funct3::CSRRW:
+      write_val = rs1; // rs1 holds the register value
+      csrs.write(csr_addr, write_val);
+      break;
+    case funct3::CSRRS:
+      write_val = old_val | rs1;
+      csrs.write(csr_addr, write_val);
+      break;
+    case funct3::CSRRC:
+      write_val = old_val & ~rs1;
+      csrs.write(csr_addr, write_val);
+      break;
+    case funct3::CSRRWI:
+      csrs.write(csr_addr, d_instr.rs1); // rs1 field holds zimm here
+      break;
+    case funct3::CSRRSI:
+      csrs.write(csr_addr, old_val | d_instr.rs1);
+      break;
+    case funct3::CSRRCI:
+      csrs.write(csr_addr, old_val & ~static_cast<uint32_t>(d_instr.rs1));
+      break;
+    default:
       throw IllegalInstructionException("Invalid SYSTEM funct3");
     }
-    // imm değerine göre ayırt et
-    if (d_instr.imm == 0) {
-      // ECALL
-      throw CpuException("ECALL encountered");
-    } else if (d_instr.imm == 1) {
-      // EBREAK
-      throw CpuException("EBREAK encountered");
-    } else {
-      throw IllegalInstructionException("Unknown SYSTEM immediate");
-    }
-    // NOTE: after ECALL/EBREAK pc does not move, it creates trap. We can throw
-    // exepction to mock behavior so step() returns false.
+
+    rd = old_val;
+  } else if (d_instr.opcode == opcode::FENCE) {
+    // Single in-order hart, no caches: FENCE/FENCE.I are no-ops.
+    return current_pc + 4;
   } else {
     throw UnimplementedInstructionException(
         "I‑type instructions not yet implemented");

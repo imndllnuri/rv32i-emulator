@@ -1,41 +1,36 @@
-# memory_test.s – Write patterns to memory and halt
+.section .data
+source:
+    .asciz "NURI"
 
 .section .text
 .globl _start
 
 _start:
-    # 1. Store a word (32 bits) at address 0x2000
-    li   t0, 0xDEADBEEF          # value to store
-    li   t1, 0x2000              # destination address
-    sw   t0, 0(t1)               # store word (4 bytes)
+    # -------------------------
+    # Add 1 to 9 and store result
+    # -------------------------
+    li   t0, 9          # t0 = 9
+    addi t0, t0, 1      # t0 = t0 + 1 = 10
 
-    # 2. Store a half-word (16 bits) at address 0x2004
-    li   t0, 0x1234               # 16-bit value
-    li   t1, 0x2004               # address (must be half-word aligned)
-    sh   t0, 0(t1)                # store half-word
+    li   t1, 0x2000
+    sw   t0, 0(t1)      # MEM[0x2000] = 10
 
-    # 3. Store a byte at address 0x2008
-    li   t0, 0xAB                 # byte value
-    li   t1, 0x2008               # address
-    sb   t0, 0(t1)                # store byte
+    # -------------------------
+    # Copy string "NURI"
+    # source -> 0x2010
+    # -------------------------
+    la   t0, source     # source pointer
+    li   t1, 0x2010     # destination pointer
 
-    # 4. Store a sequence of bytes (like a string) at 0x2010
-    li   t1, 0x2010
-    li   t0, 'H'
-    sb   t0, 0(t1)
-    li   t0, 'e'
-    sb   t0, 1(t1)
-    li   t0, 'l'
-    sb   t0, 2(t1)
-    sb   t0, 3(t1)                # second 'l'
-    li   t0, 'o'
-    sb   t0, 4(t1)
-    li   t0, 0                    # null terminator
-    sb   t0, 5(t1)
+copy_loop:
+    lb   t2, 0(t0)      # load byte
+    sb   t2, 0(t1)      # store byte
 
-    # 5. Store a word using unaligned address (optional, may cause exception)
-    #    RV32I requires alignment for word accesses; unaligned will trap.
-    #    We'll skip it to keep the example clean.
+    beqz t2, done_copy  # stop when '\0'
 
-halt:
-    ebreak                         # stop execution
+    addi t0, t0, 1      # next source char
+    addi t1, t1, 1      # next destination char
+    j    copy_loop
+
+done_copy:
+    ebreak

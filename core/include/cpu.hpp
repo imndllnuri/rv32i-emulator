@@ -2,6 +2,7 @@
 #define RISCV_CPU_HPP
 
 #include "constants.hpp"
+#include "csr.hpp"
 #include "decode.hpp"
 #include "memory.hpp"
 #include "register.hpp"
@@ -92,9 +93,13 @@ public:
     regs.write(static_cast<uint32_t>(r), value);
   }
 
+  uint32_t read_csr(uint16_t addr) const { return csrs.read(addr); }
+  void write_csr(uint16_t addr, uint32_t value) { csrs.write(addr, value); }
+
 private:
   RegisterFile regs;
   Memory mem;
+  CsrFile csrs;
   uint32_t pc;
 
   // Validation stub (not implemented in original)

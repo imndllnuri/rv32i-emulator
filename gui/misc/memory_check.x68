@@ -1,8 +1,3 @@
-# memory_test.s – Write patterns to memory and halt
-
-.section .text
-.globl _start
-
 _start:
     # 1. Store a word (32 bits) at address 0x2000
     li   t0, 0xDEADBEEF          # value to store

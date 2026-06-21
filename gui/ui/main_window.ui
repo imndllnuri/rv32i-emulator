@@ -85,6 +85,9 @@
     <addaction name="separator"/>
     <addaction name="actionShow_Registers"/>
     <addaction name="actionShow_Memory"/>
+    <addaction name="actionShow_Disassembly"/>
+    <addaction name="actionShow_Stack"/>
+    <addaction name="actionShow_PC_History"/>
     <addaction name="actionShow_Output"/>
     <addaction name="separator"/>
     <addaction name="actionZoom_In"/>
@@ -165,7 +168,10 @@
    <addaction name="separator"/>
    <addaction name="actionAssemble"/>
    <addaction name="actionRun"/>
+   <addaction name="actionPause"/>
    <addaction name="actionStep"/>
+   <addaction name="actionStep_Over"/>
+   <addaction name="actionStep_Out"/>
    <addaction name="separator"/>
    <addaction name="actionSettings"/>
   </widget>
@@ -351,6 +357,30 @@
     <string>Show Output</string>
    </property>
   </action>
+  <action name="actionShow_Disassembly">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show Disassembly</string>
+   </property>
+  </action>
+  <action name="actionShow_Stack">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show Stack</string>
+   </property>
+  </action>
+  <action name="actionShow_PC_History">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show PC History</string>
+   </property>
+  </action>
   <action name="actionZoom_In">
    <property name="text">
     <string>Zoom In</string>
@@ -447,6 +477,36 @@
   <action name="actionStep">
    <property name="text">
     <string>Step</string>
+   </property>
+  </action>
+  <action name="actionPause">
+   <property name="text">
+    <string>Pause</string>
+   </property>
+   <property name="toolTip">
+    <string>Pause the running program</string>
+   </property>
+  </action>
+  <action name="actionStep_Over">
+   <property name="text">
+    <string>Step Over</string>
+   </property>
+   <property name="toolTip">
+    <string>Step over a function call</string>
+   </property>
+   <property name="shortcut">
+    <string>F10</string>
+   </property>
+  </action>
+  <action name="actionStep_Out">
+   <property name="text">
+    <string>Step Out</string>
+   </property>
+   <property name="toolTip">
+    <string>Run until the current function returns</string>
+   </property>
+   <property name="shortcut">
+    <string>Shift+F11</string>
    </property>
   </action>
  </widget>

@@ -81,7 +81,11 @@ DecodedInstruction decode(uint32_t instr) {
     break;
   case opcode::SYSTEM:
     d.format = DecodedInstruction::Format::I;
-    d.imm = imm_i(instr); // 12‑bit signed immediate
+    d.imm = imm_i(instr); // 12‑bit signed immediate (CSR address for CSR ops)
+    break;
+  case opcode::FENCE:
+    d.format = DecodedInstruction::Format::I;
+    d.imm = imm_i(instr);
     break;
   default:
     throw IllegalInstructionException("Instruction is not implemented yet.");

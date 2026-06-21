@@ -73,6 +73,7 @@ constexpr uint8_t JALR = 0b1100111;
 constexpr uint8_t LUI = 0b0110111;    // U‑tipi
 constexpr uint8_t AUIPC = 0b0010111;  // U‑tipi
 constexpr uint8_t SYSTEM = 0b1110011; // I‑tipi (ecall/ebreak)
+constexpr uint8_t FENCE = 0b0001111;  // I‑tipi (fence/fence.i)
 } // namespace opcode
 
 // funct3 values (3-bit)
@@ -127,6 +128,20 @@ constexpr uint8_t BGEU = 0b111;
 // B-TYPE funct3 for branches
 
 constexpr uint8_t JALR = 0b000;
+
+// FENCE funct3
+constexpr uint8_t FENCE = 0b000;
+constexpr uint8_t FENCE_I = 0b001;
+// FENCE funct3
+
+// SYSTEM funct3 (CSR instructions; 0 is reserved for ECALL/EBREAK)
+constexpr uint8_t CSRRW = 0b001;
+constexpr uint8_t CSRRS = 0b010;
+constexpr uint8_t CSRRC = 0b011;
+constexpr uint8_t CSRRWI = 0b101;
+constexpr uint8_t CSRRSI = 0b110;
+constexpr uint8_t CSRRCI = 0b111;
+// SYSTEM funct3
 } // namespace funct3
 
 // funct7 values (7-bit)

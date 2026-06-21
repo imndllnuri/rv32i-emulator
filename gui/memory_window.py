@@ -4,6 +4,8 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QWidget, QPlainTextEdit
 from PyQt5.QtGui import QFont, QColor, QTextCursor
 
+from hexdump import format_hexdump
+
 UI_FILE = os.path.join(os.path.dirname(__file__), "./ui/memory_window.ui")
 
 class MemoryWidget(QWidget):
@@ -105,7 +107,7 @@ class MemoryWidget(QWidget):
             self.memoryDisplay.setPlainText("Error reading memory.")
             return
 
-        hexdump = self.format_hexdump(data, aligned)
+        hexdump = format_hexdump(data, aligned, self.bytes_per_line)
         self.memoryDisplay.setPlainText(hexdump)
         self.statusLabel.setText(f"Showing address 0x{aligned:08X}")
         self.addressChanged.emit(aligned)
@@ -114,47 +116,6 @@ class MemoryWidget(QWidget):
         """Reload memory at the current base address."""
         if self.cpu is not None:
             self.go_to_address(self.base_addr)
-
-    def format_hexdump(self, data, start_addr):
-        """Convert a list of bytes into a traditional hexdump.
-
-        Args:
-            data: list of integers (0-255)
-            start_addr: address of the first byte
-        Returns:
-            Multiline string: address + hex + ASCII
-        """
-        lines = []
-        ascii_repr = []
-        hex_bytes = []
-        per_line = self.bytes_per_line
-
-        for i, byte in enumerate(data):
-            if i % per_line == 0 and i != 0:
-                # Flush current line
-                line_addr = start_addr + i - per_line
-                line = f"{line_addr:08X}:  {' '.join(hex_bytes):<{per_line*3}}  |{''.join(ascii_repr)}|"
-                lines.append(line)
-                hex_bytes = []
-                ascii_repr = []
-
-            hex_bytes.append(f"{byte:02X}")
-            # ASCII: printable characters only
-            if 32 <= byte <= 126:
-                ascii_repr.append(chr(byte))
-            else:
-                ascii_repr.append('.')
-
-        # Last line (if any data left)
-        if hex_bytes:
-            line_addr = start_addr + len(data) - len(hex_bytes)
-            # Pad hex part to full width for alignment
-            hex_pad = ' '.join(hex_bytes)
-            hex_padded = f"{hex_pad:<{per_line*3}}"
-            line = f"{line_addr:08X}:  {hex_padded}  |{''.join(ascii_repr)}|"
-            lines.append(line)
-
-        return '\n'.join(lines)
 
     def on_follow_pc_toggled(self, checked):
         """Enable/disable automatic updates when PC changes."""
