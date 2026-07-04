@@ -46,7 +46,12 @@
 
 ### 12. **Help / About** — done (`gui/main_window.py::help_contents`, `about`)
 - Static keyboard-shortcut reference and About dialog exist. ✅
-- Still open: in-GUI contextual "?"/What's-This help on individual widgets (see project plan).
+- In-GUI contextual help: a persistent "?" toolbar button drops into Qt's What's-This mode; every dock and most toolbar actions have explanatory whatsThis/toolTip text. ✅
+
+### 13. **Toolbar/Titlebar polish** — done (`gui/main_window.py`, `gui/main.py`)
+- Real app icon (`resources/icons/app.png`), window title reflects the loaded filename and unsaved-changes state. ✅
+- High-DPI scaling attributes and a `--file` launch argument. ✅
+- Still open: full Settings dialog and persisted window/dock layout (QSettings) — see the release roadmap.
 
 ## ISA roadmap
 
