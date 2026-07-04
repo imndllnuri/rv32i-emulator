@@ -5,3 +5,6 @@ cmake>=3.27
 ninja>=1.11
 pytest>=8.0
 pytest-qt>=4.4
+
+# Linux packaging (scripts/build_appimage.sh)
+python-appimage>=1.4

@@ -22,11 +22,22 @@ A Linux-native RISC-V (RV32I + RV32M) emulator with a Qt GUI, inspired by the Wi
 
 ## Planned
 
-See `future_plans.md` for the roadmap: settings/layout persistence, packaged releases (Snap/AppImage/Windows/macOS).
+See `future_plans.md` for the roadmap: Windows/macOS packaged releases (PyInstaller).
 
 ## Status
 
-Active project — core CPU emulation, breakpoints, PC history, and the GUI's register/memory/disassembly/stack views are all functional. Settings/layout persistence, packaging, and CI are in progress; see `future_plans.md`.
+Active project — core CPU emulation, breakpoints, PC history, settings/layout persistence, and the GUI's register/memory/disassembly/stack views are all functional. A self-contained Linux AppImage is built automatically on tagged releases (see below); Windows/macOS packaging is still in progress. See `future_plans.md`.
+
+## Packaged releases (Linux)
+
+Tagged releases (`v*`) automatically build a self-contained AppImage — bundled Python, PyQt5, and RISC-V toolchain, no setup required:
+
+```sh
+chmod +x rv32i-emulator-x86_64.AppImage
+./rv32i-emulator-x86_64.AppImage
+```
+
+To build one locally: `./scripts/build_appimage.sh` (after `./scripts/setup.sh`).
 
 ## Building
 

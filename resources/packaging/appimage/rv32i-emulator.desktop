@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=rv32i-emulator
+GenericName=RISC-V Emulator
+Comment=A RISC-V (RV32I/RV32M) emulator with a Qt debugging GUI
+Exec=rv32i-emulator
+Icon=rv32i-emulator
+Categories=Development;Debugger;Electronics;
+Terminal=false
+StartupNotify=true

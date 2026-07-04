@@ -57,6 +57,15 @@
 - Recent Files is a real populated menu instead of a stub message. ✅
 - Still open: theme configurability (only one hardcoded dark theme exists today).
 
+## Packaging & release roadmap
+
+- **Linux (AppImage)** — done (`scripts/build_appimage.sh`, `scripts/fetch_toolchain.py`, `resources/packaging/appimage/`)
+  - Self-contained AppImage bundling a matching CPython, PyQt5, the compiled `rv32i_core` extension, and a vendored RISC-V `as`/`objcopy` (via the xPack toolchain, checksum-verified). ✅
+  - Verified to run standalone with no host dependencies (bundled Python/toolchain only) and to actually assemble+run a RISC-V program end to end. ✅
+  - Wired into `.github/workflows/release.yml`: tag pushes build and attach the AppImage to a draft GitHub Release. ✅
+- **Linux (Snap)** — deliberately skipped for now. Snapcraft isn't installable/testable in this environment, and strict confinement is known to sometimes block the subprocess calls this app makes to invoke the toolchain; revisit if there's real demand.
+- **Windows / macOS (PyInstaller)** — not started. Known risks going in: PyInstaller's static analysis doesn't trace into the compiled `rv32i_core` extension (needs an explicit hidden-import/binary declaration), PyQt5's platform plugin (`platforms/qwindows.dll`, macOS `cocoa`) needs explicit bundling, and macOS ships unsigned in beta-1 (Gatekeeper "right-click → Open" workaround, documented for testers) with paid Apple Developer signing deferred to v1.0.
+
 ## ISA roadmap
 
 RV32I base + RV32M (multiply/divide) + FENCE/FENCE.I + CSR instructions (CSRRW/RS/RC/WI/SI/CI) are implemented in `core/`.
