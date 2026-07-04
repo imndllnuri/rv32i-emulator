@@ -1,4 +1,5 @@
 #include "../include/cpu.hpp"
+#include "common/instr_encoders.hpp"
 #include <cstdint>
 #include <iostream>
 
@@ -11,14 +12,6 @@
     }                                                                          \
   } while (0)
 
-namespace rv32i {
-// creates j-type instruction (funct4=0, opcode=JALR)
-uint32_t make_jalr(uint32_t rs1, uint32_t rd, int32_t imm) {
-  uint32_t uimm = static_cast<uint32_t>(imm) & 0xFFF;
-  return (uimm << 20) | (rs1 << 15) | (0x0 << 12) | (rd << 7) |
-         0b1100111; // JALR opcode
-}
-} // namespace rv32i
 
 int main() {
   using namespace rv32i;

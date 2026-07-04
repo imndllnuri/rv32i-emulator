@@ -1,4 +1,5 @@
 #include "../include/cpu.hpp"
+#include "common/instr_encoders.hpp"
 #include <cstdint>
 #include <iostream>
 
@@ -11,16 +12,6 @@
     }                                                                          \
   } while (0)
 
-namespace rv32i {
-
-// Helper to build an R‑type instruction word
-uint32_t make_r_type(uint32_t funct7, uint32_t rs2, uint32_t rs1,
-                     uint32_t funct3, uint32_t rd) {
-  return (funct7 << 25) | (rs2 << 20) | (rs1 << 15) | (funct3 << 12) |
-         (rd << 7) | 0x33;
-}
-
-} // namespace rv32i
 
 int main() {
   using namespace rv32i;

@@ -1,4 +1,5 @@
 #include "../include/cpu.hpp"
+#include "common/instr_encoders.hpp"
 #include <cstdint>
 #include <iostream>
 
@@ -11,18 +12,6 @@
     }                                                                          \
   } while (0)
 
-namespace rv32i {
-// creates j-type jal instruction (imm 20-bit, signed)
-uint32_t make_jal(uint32_t rd, int32_t imm) {
-  uint32_t uimm = static_cast<uint32_t>(imm);
-  uint32_t imm20 = (uimm >> 20) & 1;
-  uint32_t imm19_12 = (uimm >> 12) & 0xFF;
-  uint32_t imm11 = (uimm >> 11) & 1;
-  uint32_t imm10_1 = (uimm >> 1) & 0x3FF;
-  return (imm20 << 31) | (imm10_1 << 21) | (imm11 << 20) | (imm19_12 << 12) |
-         (rd << 7) | 0b1101111; // JAL opcode
-}
-} // namespace rv32i
 
 int main() {
   using namespace rv32i;

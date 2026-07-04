@@ -1,4 +1,5 @@
 #include "../include/cpu.hpp"
+#include "common/instr_encoders.hpp"
 #include <cstdint>
 #include <iostream>
 
@@ -11,13 +12,6 @@
     }                                                                          \
   } while (0)
 
-namespace rv32i {
-// FENCE/FENCE.I share the I-type layout; pred/succ/fm bits in the immediate
-// are irrelevant since this core has no caches or multiple harts.
-uint32_t make_fence(uint32_t funct3) {
-  return (funct3 << 12) | 0b0001111; // rd=0, rs1=0, imm=0
-}
-} // namespace rv32i
 
 int main() {
   using namespace rv32i;

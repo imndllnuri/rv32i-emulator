@@ -1,4 +1,5 @@
 #include "../include/cpu.hpp"
+#include "common/instr_encoders.hpp"
 #include "../include/instruction.hpp"
 #include <cstdint>
 #include <iostream>
@@ -12,12 +13,6 @@
     }                                                                          \
   } while (0)
 
-namespace rv32i {
-uint32_t make_u_type(uint32_t opcode, uint32_t rd, int32_t imm) {
-  uint32_t uimm = static_cast<uint32_t>(imm) & 0xFFFFF000; // sadece üst 20 bit
-  return (uimm) | (rd << 7) | opcode;
-}
-} // namespace rv32i
 
 int main() {
   using namespace rv32i;
