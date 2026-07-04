@@ -2,11 +2,12 @@ name: Release
 
 # Triggered by pushing a version tag, e.g.: git tag v0.1.0-beta.1 && git push --tags
 #
-# For now this just re-verifies the full test suite on every platform and
-# opens a draft GitHub Release with auto-generated notes -- no packages
-# attached yet. Packaging (Snap/AppImage/Windows/macOS bundles, each with the
-# RISC-V toolchain vendored in) lands in a later phase of the project roadmap
-# and will add build/upload steps to the `build` job below per OS.
+# Re-verifies the full test suite on every platform, builds a Linux AppImage
+# (self-contained: bundled CPython/PyQt5/rv32i_core/RISC-V toolchain, verified
+# to run standalone with no host dependencies), and opens a draft GitHub
+# Release with the AppImage attached. Windows/macOS packaging (PyInstaller
+# bundles) is a later phase of the project roadmap and will add build/upload
+# steps to the `build` job below for those legs.
 on:
   push:
     tags:
@@ -52,9 +53,21 @@ jobs:
         shell: pwsh
         run: ./scripts/setup.ps1 -NoVenv
 
-      # TODO(packaging phase): build the platform-specific package here
-      # (Snap/AppImage on Linux, PyInstaller bundle on Windows/macOS) and
-      # upload it as a workflow artifact for the release job below to attach.
+      # TODO(packaging phase): PyInstaller bundle for Windows/macOS.
+
+      - name: Build AppImage (Linux)
+        if: runner.os == 'Linux'
+        # --no-venv above means python-appimage (from requirements-dev.txt)
+        # is already on this job's plain `python3`, same as the test suite.
+        run: ./scripts/build_appimage.sh
+
+      - name: Upload AppImage artifact
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: appimage
+          path: dist/rv32i-emulator-*.AppImage
+          if-no-files-found: error
 
   create-draft-release:
     name: Create draft GitHub Release
@@ -63,11 +76,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: appimage
+          path: dist
+
       - name: Create draft release
         uses: softprops/action-gh-release@v2
         with:
           draft: true
           prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
           generate_release_notes: true
-          # TODO(packaging phase): add `files:` here once per-OS packages are
-          # produced by the `build` job's upload-artifact/download-artifact steps.
+          files: dist/rv32i-emulator-*.AppImage
+          # TODO(packaging phase): add Windows/macOS PyInstaller artifacts here too.
