@@ -97,3 +97,10 @@ class StackWidget(QWidget):
             if sp is None:
                 sp = self.cpu.get_registers()[SP_REG_INDEX]
             self.go_to_address(sp)
+
+    def set_controls_enabled(self, enabled):
+        """Disable Go/Refresh while the CPU is running on a background
+        thread, so a click here can't race the RunWorker's cpu.step()
+        calls."""
+        self.goButton.setEnabled(enabled)
+        self.refreshButton.setEnabled(enabled)

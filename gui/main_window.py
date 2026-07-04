@@ -1,3 +1,4 @@
+import glob
 import os
 import sys
 import subprocess
@@ -6,10 +7,10 @@ from collections import deque
 
 from PyQt5 import uic
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QTextCursor, QFont
+from PyQt5.QtGui import QTextCursor, QFont, QIcon
 from PyQt5.QtWidgets import (
     QDockWidget, QFileDialog, QMainWindow, QMessageBox, QListWidget,
-    QPlainTextEdit, QStyle, QLabel,
+    QPlainTextEdit, QStyle, QLabel, QWhatsThis,
 )
 
 from find_dialog import FindDialog
@@ -22,8 +23,28 @@ from disassembler import OPCODE_JAL, OPCODE_JALR
 from code_editor import CodeEditor
 from syntax_highlighter import AsmHighlighter
 
+
+def _find_core_build_dir():
+    """Locate the directory containing the compiled rv32i_core extension.
+
+    Single-config generators (Unix Makefiles/Ninja, the default on
+    Linux/macOS) put it directly in core/build/. Multi-config generators
+    (Visual Studio, CMake's default on Windows) put it in a
+    per-configuration subdirectory like core/build/Release/ instead.
+    """
+    base = os.path.abspath(os.path.join(os.path.dirname(__file__), "../core/build"))
+    candidates = [base] + [
+        os.path.join(base, cfg)
+        for cfg in ("Release", "RelWithDebInfo", "Debug", "MinSizeRel")
+    ]
+    for candidate in candidates:
+        if glob.glob(os.path.join(candidate, "rv32i_core*")):
+            return candidate
+    return base  # fall back so the import below raises a clear error
+
+
 # Add the path to the compiled pybind11 module
-module_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../core/build"))
+module_path = _find_core_build_dir()
 if module_path not in sys.path:
     sys.path.insert(0, module_path)
 
@@ -91,6 +112,8 @@ class RunWorker(QThread):
         self.finished.emit()
 
 UI_FILE = os.path.join(os.path.dirname(__file__), "./ui/main_window.ui")
+APP_ICON_PATH = os.path.join(os.path.dirname(__file__), "../resources/icons/app.png")
+APP_NAME = "rv32i-emulator"
 
 # A single dark theme tying the editor, docks, and chrome together so the
 # app reads as one cohesive tool instead of mismatched default widgets.
@@ -129,6 +152,9 @@ class MainWindow(QMainWindow):
         self.setStyleSheet(DARK_STYLE)
         self._upgrade_editor()
 
+        if os.path.exists(APP_ICON_PATH):
+            self.setWindowIcon(QIcon(APP_ICON_PATH))
+
         self.current_file = None
         self.cpu = rv32i_core.CPU()
         self.running = False
@@ -140,6 +166,18 @@ class MainWindow(QMainWindow):
         self.instructions_executed = 0
 
         self.editor.setPlainText("Hello World!")
+        self.editor.document().setModified(False)
+        self.editor.document().modificationChanged.connect(lambda _: self._update_window_title())
+        self._update_window_title()
+
+        # A persistent "?" toolbar button that drops the cursor into Qt's
+        # What's-This mode -- click it, then click any dock/control to see
+        # an explanation of what it does (whatsThis text is set per-widget
+        # below and in the .ui file's action definitions).
+        self.actionWhatsThis = QWhatsThis.createAction(self)
+        self.toolBar.addSeparator()
+        self.toolBar.addAction(self.actionWhatsThis)
+
         # actions
         self.actionNew.triggered.connect(self.new_file)
         self.actionOpen.triggered.connect(self.open_file)
@@ -186,12 +224,25 @@ class MainWindow(QMainWindow):
         self.actionStep_Out.triggered.connect(self.step_out)
         self.actionPause.triggered.connect(self.pause)
 
+        # Every dock gets an explicit objectName (required for
+        # QMainWindow.saveState()/restoreState() to reliably round-trip a
+        # layout) and is recorded in self.docks under a stable short key, so
+        # later code (settings persistence, "show all" helpers) can iterate
+        # by name instead of hard-coding each dock attribute individually.
+        self.docks = {}
+
         # //register window dock
         self.register_dock = QDockWidget("Registers", self)
+        self.register_dock.setObjectName("dock_registers")
         self.register_widget = RegisterWidget(self)
+        registers_help = ("Lists all 32 CPU registers (x0-x31) with their ABI names and "
+                          "current values. Registers changed by the last step are highlighted.")
+        self.register_dock.setWhatsThis(registers_help)
+        self.register_widget.setWhatsThis(registers_help)
         self.register_dock.setWidget(self.register_widget)
         self.addDockWidget(Qt.RightDockWidgetArea, self.register_dock)
         self.register_dock.setVisible(False)                # hidden by default
+        self.docks["registers"] = self.register_dock
 
         # Forward status messages from register widget to main status bar
         self.register_widget.statusMessage.connect(self.statusbar.showMessage)
@@ -205,10 +256,16 @@ class MainWindow(QMainWindow):
 
         # //memory window dock
         self.memory_dock = QDockWidget("Memory", self)
+        self.memory_dock.setObjectName("dock_memory")
         self.memory_widget = MemoryWidget(self)
+        memory_help = ("Shows a hex dump of emulator memory. Enter an address and click Go "
+                      "to jump there, or check Follow PC to track the program counter.")
+        self.memory_dock.setWhatsThis(memory_help)
+        self.memory_widget.setWhatsThis(memory_help)
         self.memory_dock.setWidget(self.memory_widget)
         self.addDockWidget(Qt.RightDockWidgetArea, self.memory_dock)
         self.memory_dock.setVisible(False)
+        self.docks["memory"] = self.memory_dock
 
         self.actionShow_Memory.toggled.connect(self.memory_dock.setVisible)
         self.memory_dock.visibilityChanged.connect(self.actionShow_Memory.setChecked)
@@ -216,10 +273,16 @@ class MainWindow(QMainWindow):
 
         # //disassembly window dock
         self.disasm_dock = QDockWidget("Disassembly", self)
+        self.disasm_dock.setObjectName("dock_disassembly")
         self.disasm_widget = DisassemblyWidget(self)
+        disasm_help = ("Shows disassembled instructions around the current PC (highlighted). "
+                       "Double-click a row to set or clear a breakpoint there.")
+        self.disasm_dock.setWhatsThis(disasm_help)
+        self.disasm_widget.setWhatsThis(disasm_help)
         self.disasm_dock.setWidget(self.disasm_widget)
         self.addDockWidget(Qt.RightDockWidgetArea, self.disasm_dock)
         self.disasm_dock.setVisible(False)
+        self.docks["disassembly"] = self.disasm_dock
 
         self.disasm_widget.breakpointsChanged.connect(self.on_breakpoints_changed)
         self.actionShow_Disassembly.toggled.connect(self.disasm_dock.setVisible)
@@ -227,34 +290,51 @@ class MainWindow(QMainWindow):
 
         # //stack window dock
         self.stack_dock = QDockWidget("Stack", self)
+        self.stack_dock.setObjectName("dock_stack")
         self.stack_widget = StackWidget(self)
+        stack_help = ("Shows memory near the current stack pointer (sp) -- useful for "
+                     "inspecting function-call frames and local variables.")
+        self.stack_dock.setWhatsThis(stack_help)
+        self.stack_widget.setWhatsThis(stack_help)
         self.stack_dock.setWidget(self.stack_widget)
         self.addDockWidget(Qt.RightDockWidgetArea, self.stack_dock)
         self.stack_dock.setVisible(False)
+        self.docks["stack"] = self.stack_dock
 
         self.actionShow_Stack.toggled.connect(self.stack_dock.setVisible)
         self.stack_dock.visibilityChanged.connect(self.actionShow_Stack.setChecked)
 
         # //PC history dock
         self.pc_history_dock = QDockWidget("PC History", self)
+        self.pc_history_dock.setObjectName("dock_pc_history")
         self.pc_history_list = QListWidget(self)
+        pc_history_help = ("Lists the last executed program-counter values. Double-click an "
+                           "entry to jump to it in the Memory and Disassembly docks.")
+        self.pc_history_dock.setWhatsThis(pc_history_help)
+        self.pc_history_list.setWhatsThis(pc_history_help)
         self.pc_history_list.itemDoubleClicked.connect(self.on_pc_history_item_double_clicked)
         self.pc_history_dock.setWidget(self.pc_history_list)
         self.addDockWidget(Qt.RightDockWidgetArea, self.pc_history_dock)
         self.pc_history_dock.setVisible(False)
+        self.docks["pc_history"] = self.pc_history_dock
 
         self.actionShow_PC_History.toggled.connect(self.pc_history_dock.setVisible)
         self.pc_history_dock.visibilityChanged.connect(self.actionShow_PC_History.setChecked)
 
         # //output console dock
         self.output_dock = QDockWidget("Output", self)
+        self.output_dock.setObjectName("dock_output")
         self.output_console = QPlainTextEdit(self)
+        output_help = "Logs assemble/run/breakpoint/error messages as they happen."
+        self.output_dock.setWhatsThis(output_help)
+        self.output_console.setWhatsThis(output_help)
         self.output_console.setReadOnly(True)
         self.output_console.setMaximumBlockCount(2000)
         self.output_console.setFont(QFont("Courier New", 10))
         self.output_dock.setWidget(self.output_console)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.output_dock)
         self.output_dock.setVisible(False)
+        self.docks["output"] = self.output_dock
 
         self.actionShow_Output.toggled.connect(self.output_dock.setVisible)
         self.output_dock.visibilityChanged.connect(self.actionShow_Output.setChecked)
@@ -328,6 +408,13 @@ class MainWindow(QMainWindow):
         for action, std_icon in icon_map.items():
             action.setIcon(style.standardIcon(std_icon))
 
+    def _update_window_title(self):
+        """Title reflects what's actually loaded and whether it has unsaved
+        changes, instead of always reading the static app name."""
+        name = os.path.basename(self.current_file) if self.current_file else "Untitled"
+        dirty = "*" if self.editor.document().isModified() else ""
+        self.setWindowTitle(f"{dirty}{name} - {APP_NAME}")
+
     def _update_action_states(self):
         """Centralizes which execution actions make sense given the current
         program/running state, so stale buttons don't sit there enabled
@@ -358,9 +445,9 @@ class MainWindow(QMainWindow):
     def new_file(self):
         self.statusbar.showMessage("New file triggered", 1000)
         self.editor.clear()
-        self.setWindowTitle("emulator-linux")
         self.editor.document().setModified(False)
         self.current_file = None
+        self._update_window_title()
         self._reset_program_state()
 
     # TODO: implement multiple files opening
@@ -379,20 +466,25 @@ class MainWindow(QMainWindow):
             # selectedFiles() returns a list of paths; we take the first one
             file_path = open_file_dialog.selectedFiles()[0]
             self.statusbar.showMessage(f"Selected file: {file_path}", 3000)
-
-            try:
-                with open(file_path, "r") as f:
-                    content = f.read()
-                self.editor.setPlainText(content)
-                self.current_file = file_path
-                self.setWindowTitle(f"emulator-linux – {file_path}")
-                self.statusbar.showMessage(f"Opened {file_path}", 3000)
-                self.editor.document().setModified(False)
-                self._reset_program_state()
-            except Exception as e:
-                self.statusbar.showMessage(f"Error opening file: {str(e)}", 5000)
+            self.open_path(file_path)
         else:
             self.statusbar.showMessage("Open cancelled.", 2000)
+
+    def open_path(self, file_path):
+        """Load a file into the editor directly, without the Open dialog.
+        Used by open_file() above and by main.py's --file command-line
+        argument."""
+        try:
+            with open(file_path, "r") as f:
+                content = f.read()
+            self.editor.setPlainText(content)
+            self.current_file = file_path
+            self.statusbar.showMessage(f"Opened {file_path}", 3000)
+            self.editor.document().setModified(False)
+            self._update_window_title()
+            self._reset_program_state()
+        except Exception as e:
+            self.statusbar.showMessage(f"Error opening file: {str(e)}", 5000)
 
     def save_file(self):
         self.statusbar.showMessage("Save file triggered", 1000)
@@ -404,6 +496,7 @@ class MainWindow(QMainWindow):
                 self.statusbar.showMessage(f"Saved {self.current_file}", 3000)
                 # we have just saved it so there is not any modification yet (clean state)
                 self.editor.document().setModified(False)
+                self._update_window_title()
             except Exception as e:
                 self.statusbar.showMessage(f"Error saving: {str(e)}", 5000)
         else:
@@ -428,9 +521,9 @@ class MainWindow(QMainWindow):
             try:
                 with open(file_path, "w") as f:
                     f.write(self.editor.toPlainText())
-                self.setWindowTitle(f"emulator-linux – {file_path}")
                 self.statusbar.showMessage(f"Saved as {file_path}", 3000)
                 self.editor.document().setModified(False)
+                self._update_window_title()
             except Exception as e:
                 self.statusbar.showMessage(f"Error saving: {str(e)}", 5000)
         else:
@@ -671,6 +764,11 @@ class MainWindow(QMainWindow):
         self.actionRun.setText("Stop")          # visual feedback
         self.state_status_label.setText("Running")
         self._update_action_states()
+        # The RunWorker steps the CPU on a background thread; Go/Refresh on
+        # Memory/Stack would call into the same cpu object from this thread
+        # while that's happening, so disable them until the run stops.
+        self.memory_widget.set_controls_enabled(False)
+        self.stack_widget.set_controls_enabled(False)
 
         self.worker = RunWorker(self.cpu, max_steps=10_000_000,
                                 breakpoints=set(self.breakpoints))
@@ -693,6 +791,8 @@ class MainWindow(QMainWindow):
         self.running = False
         self.actionRun.setText("Run")
         self._update_action_states()
+        self.memory_widget.set_controls_enabled(True)
+        self.stack_widget.set_controls_enabled(True)
         self.worker = None
         # Final register refresh (reads PC too)
         self.update_register_display()
