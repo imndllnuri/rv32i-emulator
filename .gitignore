@@ -81,3 +81,17 @@ assembler/*.bin
 # CMake (build/ above already covers core/build/)
 CMakeCache.txt
 CMakeFiles/
+
+# Vendored RISC-V toolchain (fetched by scripts/fetch_toolchain.py, not source)
+/vendor/
+
+# Packaging build output
+*.AppImage
+*.snap
+appimage-build/
+
+# Copied into the appimage recipe at build time by scripts/build_appimage.sh
+# from their real source of truth (root requirements.txt, resources/icons/);
+# committing them here would just be a duplicate that goes stale.
+resources/packaging/appimage/requirements.txt
+resources/packaging/appimage/rv32i-emulator.png

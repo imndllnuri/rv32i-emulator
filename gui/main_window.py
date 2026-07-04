@@ -1,5 +1,7 @@
 import glob
 import os
+import platform
+import shutil
 import sys
 import subprocess
 import tempfile
@@ -51,6 +53,50 @@ if module_path not in sys.path:
     sys.path.insert(0, module_path)
 
 import rv32i_core
+
+
+def _vendored_toolchain_dir():
+    """The platform-specific vendor/toolchain/<platform>/bin/ produced by
+    scripts/fetch_toolchain.py -- matches that script's platform-key logic."""
+    if sys.platform == "win32":
+        key = "win32-x64"
+    elif sys.platform == "darwin":
+        key = "darwin-arm64" if platform.machine().lower() in ("arm64", "aarch64") else "darwin-x64"
+    else:
+        key = "linux-x64"
+    return os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "vendor", "toolchain", key, "bin")
+    )
+
+
+def _find_assembler_tools():
+    """Locate the RISC-V `as`/`objcopy` binaries the Assemble button needs.
+
+    Prefers a vendored toolchain (what packaged releases bundle) over
+    whatever's on PATH, and tries both xPack's naming
+    (riscv-none-elf-*, what scripts/fetch_toolchain.py vendors) and the
+    traditional riscv-gnu-toolchain naming (riscv64-unknown-elf-*, what
+    this project originally documented) since a developer could have
+    either installed. Returns (as_path, objcopy_path), or (None, None) if
+    neither is found anywhere.
+    """
+    exe_suffix = ".exe" if sys.platform == "win32" else ""
+    vendor_bin = _vendored_toolchain_dir()
+    vendored_as = os.path.join(vendor_bin, f"riscv-none-elf-as{exe_suffix}")
+    vendored_objcopy = os.path.join(vendor_bin, f"riscv-none-elf-objcopy{exe_suffix}")
+    if os.path.exists(vendored_as) and os.path.exists(vendored_objcopy):
+        return vendored_as, vendored_objcopy
+
+    for as_name, objcopy_name in (
+        ("riscv-none-elf-as", "riscv-none-elf-objcopy"),
+        ("riscv64-unknown-elf-as", "riscv64-unknown-elf-objcopy"),
+    ):
+        as_path = shutil.which(as_name)
+        objcopy_path = shutil.which(objcopy_name)
+        if as_path and objcopy_path:
+            return as_path, objcopy_path
+
+    return None, None
 
 from PyQt5.QtCore import QThread, pyqtSignal
 
@@ -738,7 +784,16 @@ class MainWindow(QMainWindow):
             self.statusbar.showMessage(f"Error writing assembly file: {e}", 5000)
             return
 
-        # 4. Assemble using riscv64-unknown-elf-as and objcopy
+        # 4. Assemble using a vendored toolchain if packaged, else whatever's on PATH
+        as_path, objcopy_path = _find_assembler_tools()
+        if not as_path:
+            msg = ("RISC-V toolchain not found. Expected a vendored copy under "
+                  "vendor/toolchain/, or 'riscv-none-elf-as'/'objcopy' "
+                  "(xPack) or 'riscv64-unknown-elf-as'/'objcopy' on PATH.")
+            self.statusbar.showMessage(msg, 5000)
+            self.append_output(msg)
+            return
+
         try:
             # Step 4a: assemble to ELF (temporary file, because we only need binary)
             # We'll assemble directly to a temporary ELF and then objcopy to bin.
@@ -747,13 +802,13 @@ class MainWindow(QMainWindow):
                 elf_path = tmp_elf.name
 
             subprocess.run(
-                ["riscv64-unknown-elf-as", "-march=rv32im", "-o", elf_path, self.current_file],
+                [as_path, "-march=rv32im", "-o", elf_path, self.current_file],
                 check=True, capture_output=True, text=True
             )
 
             # Step 4b: convert ELF to binary at desired location
             subprocess.run(
-                ["riscv64-unknown-elf-objcopy", "-O", "binary", elf_path, bin_file],
+                [objcopy_path, "-O", "binary", elf_path, bin_file],
                 check=True, capture_output=True, text=True
             )
 
@@ -765,7 +820,7 @@ class MainWindow(QMainWindow):
             self.append_output(f"Assembly failed:\n{e.stderr}")
             return
         except FileNotFoundError as e:
-            msg = "Toolchain not found. Ensure 'riscv64-unknown-elf-as' and 'objcopy' are in PATH."
+            msg = f"Toolchain invocation failed: {e}"
             self.statusbar.showMessage(msg, 5000)
             self.append_output(msg)
             return
