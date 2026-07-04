@@ -2,7 +2,6 @@
 #define RISCV_MEMORY_HPP
 
 #include "constants.hpp"
-#include <array>
 #include <cstdint>
 #include <stdexcept>
 #include <vector>
@@ -17,7 +16,12 @@ public:
 
 class Memory {
 public:
-  Memory() : memory{} {}
+  // Heap-allocated (not std::array<uint8_t, MEMORY_SIZE>): CPU embeds a
+  // Memory by value, and every test declares `CPU cpu;` as a stack-local, so
+  // a stack-resident 1 MiB buffer overflows the default 1 MiB thread stack
+  // on MSVC/Windows immediately on construction (Linux/macOS default to an
+  // 8 MiB stack, which is why this only ever segfaulted in Windows CI).
+  Memory() : memory(MEMORY_SIZE, 0) {}
 
   void load_program(const std::vector<uint8_t> &code, uint32_t address) {
     if (address + code.size() > MEMORY_SIZE)
@@ -75,7 +79,7 @@ public:
   }
 
 private:
-  std::array<uint8_t, MEMORY_SIZE> memory;
+  std::vector<uint8_t> memory;
 };
 
 } // namespace rv32i
