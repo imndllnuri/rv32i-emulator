@@ -7,10 +7,10 @@ from collections import deque
 
 from PyQt5 import uic
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QTextCursor, QFont, QIcon
+from PyQt5.QtGui import QTextCursor, QFont, QIcon, QCursor
 from PyQt5.QtWidgets import (
     QDockWidget, QFileDialog, QMainWindow, QMessageBox, QListWidget,
-    QPlainTextEdit, QStyle, QLabel, QWhatsThis,
+    QPlainTextEdit, QStyle, QLabel, QWhatsThis, QMenu,
 )
 
 from find_dialog import FindDialog
@@ -22,6 +22,8 @@ from stack_window import StackWidget
 from disassembler import OPCODE_JAL, OPCODE_JALR
 from code_editor import CodeEditor
 from syntax_highlighter import AsmHighlighter
+from settings import AppSettings
+from settings_dialog import SettingsDialog
 
 
 def _find_core_build_dir():
@@ -128,13 +130,14 @@ QStatusBar { background-color: #007ACC; color: #FFFFFF; }
 QStatusBar QLabel { color: #FFFFFF; }
 QDockWidget { color: #D4D4D4; titlebar-close-icon: none; }
 QDockWidget::title { background-color: #2D2D30; padding: 4px; }
-QPlainTextEdit, QTextEdit, QLineEdit {
+QPlainTextEdit, QTextEdit, QLineEdit, QSpinBox {
     background-color: #1E1E1E; color: #D4D4D4;
     border: 1px solid #3E3E42; selection-background-color: #264F78;
 }
 QTableWidget, QListWidget {
     background-color: #252526; color: #D4D4D4;
     gridline-color: #3E3E42; border: 1px solid #3E3E42;
+    alternate-background-color: #2A2D2E;
 }
 QHeaderView::section { background-color: #2D2D30; color: #D4D4D4; border: none; padding: 4px; }
 QPushButton {
@@ -143,6 +146,14 @@ QPushButton {
 }
 QPushButton:hover { background-color: #4E4E52; }
 QCheckBox, QLabel { color: #D4D4D4; }
+QTabWidget::pane { border: 1px solid #3E3E42; background-color: #252526; }
+QTabBar::tab {
+    background-color: #2D2D30; color: #D4D4D4;
+    border: 1px solid #3E3E42; border-bottom: none;
+    padding: 4px 10px;
+}
+QTabBar::tab:selected { background-color: #252526; border-bottom: 2px solid #007ACC; }
+QTabBar::tab:hover:!selected { background-color: #3E3E42; }
 """
 
 class MainWindow(QMainWindow):
@@ -164,11 +175,17 @@ class MainWindow(QMainWindow):
         self.breakpoints = set()
         self.pc_history = deque(maxlen=50)
         self.instructions_executed = 0
+        self.app_settings = AppSettings()
 
         self.editor.setPlainText("Hello World!")
         self.editor.document().setModified(False)
         self.editor.document().modificationChanged.connect(lambda _: self._update_window_title())
         self._update_window_title()
+
+        saved_font_size = self.app_settings.editor_font_size()
+        font = self.editor.font()
+        font.setPointSize(saved_font_size)
+        self.editor.setFont(font)
 
         # A persistent "?" toolbar button that drops the cursor into Qt's
         # What's-This mode -- click it, then click any dock/control to see
@@ -181,9 +198,7 @@ class MainWindow(QMainWindow):
         # actions
         self.actionNew.triggered.connect(self.new_file)
         self.actionOpen.triggered.connect(self.open_file)
-        self.actionRecent_Files.triggered.connect(
-            lambda: self.statusbar.showMessage("Recent files triggered", 1000)
-        )  # or open recent menu
+        self.actionRecent_Files.triggered.connect(self.show_recent_files_menu)
         self.actionSave.triggered.connect(self.save_file)
         self.actionSave_as.triggered.connect(self.save_file_as)
         self.actionExit.triggered.connect(self.exit_app)
@@ -349,6 +364,11 @@ class MainWindow(QMainWindow):
 
         self._user_paused = False
         self._setup_default_layout()
+        # Restore a previously saved window/dock layout if one exists; if
+        # not (first run) or it fails to apply (e.g. after a Qt upgrade
+        # changes the saveState() blob format), the default layout above
+        # stands as-is.
+        self.app_settings.restore_window_state(self)
         self._setup_icons()
         self._update_action_states()
 
@@ -366,6 +386,25 @@ class MainWindow(QMainWindow):
         self.actionShow_Registers.setChecked(True)
         self.actionShow_Disassembly.setChecked(True)
         self.actionShow_Memory.setChecked(True)
+
+    def reset_to_default_layout(self):
+        """Escape hatch for Settings > Layout > Reset, in case a restored
+        or user-arranged layout gets into an unusable state."""
+        for dock in self.docks.values():
+            self.removeDockWidget(dock)
+        for key, dock in self.docks.items():
+            area = Qt.BottomDockWidgetArea if key == "output" else Qt.RightDockWidgetArea
+            self.addDockWidget(area, dock)
+        self._setup_default_layout()
+        # _setup_default_layout() only calls setChecked(True) on the
+        # show-actions, which is a no-op if an action was already checked
+        # before this reset (Qt doesn't re-emit toggled for an unchanged
+        # state) -- so drive visibility directly instead of depending on
+        # that signal chain having something to react to.
+        visible_by_default = {"registers", "disassembly", "memory"}
+        for key, dock in self.docks.items():
+            dock.setVisible(key in visible_by_default)
+        self.statusbar.showMessage("Layout reset to defaults.", 2000)
 
     def _upgrade_editor(self):
         """Swap the plain QPlainTextEdit from the .ui file for a CodeEditor
@@ -482,6 +521,7 @@ class MainWindow(QMainWindow):
             self.statusbar.showMessage(f"Opened {file_path}", 3000)
             self.editor.document().setModified(False)
             self._update_window_title()
+            self.app_settings.add_recent_file(file_path)
             self._reset_program_state()
         except Exception as e:
             self.statusbar.showMessage(f"Error opening file: {str(e)}", 5000)
@@ -497,6 +537,7 @@ class MainWindow(QMainWindow):
                 # we have just saved it so there is not any modification yet (clean state)
                 self.editor.document().setModified(False)
                 self._update_window_title()
+                self.app_settings.add_recent_file(self.current_file)
             except Exception as e:
                 self.statusbar.showMessage(f"Error saving: {str(e)}", 5000)
         else:
@@ -524,6 +565,7 @@ class MainWindow(QMainWindow):
                 self.statusbar.showMessage(f"Saved as {file_path}", 3000)
                 self.editor.document().setModified(False)
                 self._update_window_title()
+                self.app_settings.add_recent_file(file_path)
             except Exception as e:
                 self.statusbar.showMessage(f"Error saving: {str(e)}", 5000)
         else:
@@ -532,6 +574,10 @@ class MainWindow(QMainWindow):
     def exit_app(self):
         self.statusbar.showMessage("Exit triggered :(", 1000)
         self.close()
+
+    def closeEvent(self, event):
+        self.app_settings.save_window_state(self)
+        super().closeEvent(event)
 
     def undo(self):
         self.statusbar.showMessage("Undo triggered", 1000)
@@ -915,8 +961,23 @@ class MainWindow(QMainWindow):
         self.statusbar.showMessage("Simulator views shown.", 2000)
 
     def settings(self):
-        self.statusbar.showMessage("Settings triggered", 1000)
-        # TODO: open settings dialog
+        dialog = SettingsDialog(self, self)
+        dialog.exec()
+
+    def show_recent_files_menu(self):
+        files = self.app_settings.recent_files()
+        if not files:
+            self.statusbar.showMessage("No recent files.", 2000)
+            return
+
+        menu = QMenu(self)
+        for path in files:
+            action = menu.addAction(path)
+            action.triggered.connect(lambda checked=False, p=path: self.open_path(p))
+        menu.addSeparator()
+        clear_action = menu.addAction("Clear Recent Files")
+        clear_action.triggered.connect(self.app_settings.clear_recent_files)
+        menu.exec(QCursor.pos())
 
     def help_contents(self):
         shortcuts = (

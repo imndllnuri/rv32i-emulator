@@ -7,6 +7,8 @@ import glob
 import os
 import sys
 
+import pytest
+
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GUI_DIR = os.path.join(ROOT_DIR, "gui")
 
@@ -36,3 +38,15 @@ for path in (_find_core_build_dir(), GUI_DIR):
 # Override by exporting QT_QPA_PLATFORM=xcb (or similar) before running pytest
 # if you want to watch the GUI tests execute.
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+
+@pytest.fixture(autouse=True)
+def isolate_qsettings(tmp_path):
+    """MainWindow.__init__ constructs a gui.settings.AppSettings, which
+    reads/writes real QSettings storage (~/.config/rv32i-emulator/... on
+    Linux) -- without this, every test that builds a MainWindow would touch
+    the developer's actual settings file. Redirect ini-format QSettings to
+    a fresh per-test temp directory instead."""
+    from PyQt5.QtCore import QSettings
+    QSettings.setPath(QSettings.IniFormat, QSettings.UserScope, str(tmp_path))
+    yield
