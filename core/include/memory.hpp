@@ -2,7 +2,6 @@
 #define RISCV_MEMORY_HPP
 
 #include "constants.hpp"
-#include <array>
 #include <cstdint>
 #include <stdexcept>
 #include <vector>
@@ -17,7 +16,12 @@ public:
 
 class Memory {
 public:
-  Memory() : memory{} {}
+  // Heap-allocated (not std::array<uint8_t, MEMORY_SIZE>): CPU embeds a
+  // Memory by value, and every test declares `CPU cpu;` as a stack-local, so
+  // a stack-resident 1 MiB buffer overflows the default 1 MiB thread stack
+  // on MSVC/Windows immediately on construction (Linux/macOS default to an
+  // 8 MiB stack, which is why this only ever segfaulted in Windows CI).
+  Memory() : memory(MEMORY_SIZE, 0) {}
 
   void load_program(const std::vector<uint8_t> &code, uint32_t address) {
     if (address + code.size() > MEMORY_SIZE)
@@ -33,14 +37,18 @@ public:
   }
 
   uint16_t read_half(uint32_t addr) const {
-    if (addr + 1 >= MEMORY_SIZE)
+    // Written as `addr > MEMORY_SIZE - 2` rather than `addr + 1 >= MEMORY_SIZE`
+    // because the latter overflows uint32_t (wrapping past 0) for addr near
+    // UINT32_MAX, which would bypass the bounds check entirely and read out
+    // of the backing std::array.
+    if (addr > MEMORY_SIZE - 2)
       throw MemoryAccessException("Out of bounds while reading memory half.");
     return static_cast<uint16_t>(memory[addr]) |
            (static_cast<uint16_t>(memory[addr + 1]) << 8);
   }
 
   uint32_t read_word(uint32_t addr) const {
-    if (addr + 3 >= MEMORY_SIZE)
+    if (addr > MEMORY_SIZE - 4)
       throw MemoryAccessException("Out of bounds while reading memory word.");
     return static_cast<uint32_t>(memory[addr]) |
            (static_cast<uint32_t>(memory[addr + 1]) << 8) |
@@ -55,14 +63,14 @@ public:
   }
 
   void write_half(uint32_t addr, uint16_t value) {
-    if (addr + 1 >= MEMORY_SIZE)
+    if (addr > MEMORY_SIZE - 2)
       throw MemoryAccessException("Out of bounds while writing memory half.");
     memory[addr] = value & 0xFF;
     memory[addr + 1] = (value >> 8) & 0xFF;
   }
 
   void write_word(uint32_t addr, uint32_t value) {
-    if (addr + 3 >= MEMORY_SIZE)
+    if (addr > MEMORY_SIZE - 4)
       throw MemoryAccessException("Out of bounds while writing memory word.");
     memory[addr] = value & 0xFF;
     memory[addr + 1] = (value >> 8) & 0xFF;
@@ -71,7 +79,7 @@ public:
   }
 
 private:
-  std::array<uint8_t, MEMORY_SIZE> memory;
+  std::vector<uint8_t> memory;
 };
 
 } // namespace rv32i

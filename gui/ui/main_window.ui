@@ -185,7 +185,10 @@
    <property name="shortcut">
     <string>Ctrl+N</string>
    </property>
-  </action>
+     <property name="whatsThis">
+    <string>Clears the editor and starts a new, unsaved file. You'll be prompted to save first if the current file has unsaved changes.</string>
+   </property>
+</action>
   <action name="actionOpen">
    <property name="text">
     <string>Open</string>
@@ -196,7 +199,10 @@
    <property name="shortcut">
     <string>Ctrl+O</string>
    </property>
-  </action>
+     <property name="whatsThis">
+    <string>Opens an existing .s/.asm/.txt file into the editor, replacing its current contents.</string>
+   </property>
+</action>
   <action name="actionRecent_Files">
    <property name="text">
     <string>Recent Files</string>
@@ -204,7 +210,10 @@
    <property name="toolTip">
     <string>List Recent Files</string>
    </property>
-  </action>
+     <property name="whatsThis">
+    <string>Lists recently opened files for quick access.</string>
+   </property>
+</action>
   <action name="actionSave">
    <property name="text">
     <string>Save</string>
@@ -213,7 +222,7 @@
     <string>Save the Current File</string>
    </property>
    <property name="whatsThis">
-    <string>wwwwwwwwwwwww</string>
+    <string>Writes the editor's current contents to the file on disk. If this is a new, never-saved file, behaves like Save As.</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+S</string>
@@ -229,7 +238,10 @@
    <property name="shortcut">
     <string>Ctrl+Shift+S</string>
    </property>
-  </action>
+     <property name="whatsThis">
+    <string>Saves the editor's contents to a new file and switches the current file to it.</string>
+   </property>
+</action>
   <action name="actionExit">
    <property name="text">
     <string>Exit</string>
@@ -240,7 +252,10 @@
    <property name="shortcut">
     <string>Ctrl+Q</string>
    </property>
-  </action>
+     <property name="whatsThis">
+    <string>Closes the application. You'll be prompted to save first if there are unsaved changes.</string>
+   </property>
+</action>
   <action name="actionUndo">
    <property name="text">
     <string>Undo</string>
@@ -248,7 +263,13 @@
    <property name="shortcut">
     <string>Ctrl+Z</string>
    </property>
-  </action>
+     <property name="toolTip">
+    <string>Undo the last edit</string>
+   </property>
+   <property name="whatsThis">
+    <string>Reverts the most recent change made in the editor.</string>
+   </property>
+</action>
   <action name="actionRedo">
    <property name="text">
     <string>Redo</string>
@@ -256,7 +277,13 @@
    <property name="shortcut">
     <string>Ctrl+Y</string>
    </property>
-  </action>
+     <property name="toolTip">
+    <string>Redo the last undone edit</string>
+   </property>
+   <property name="whatsThis">
+    <string>Re-applies a change that was just undone.</string>
+   </property>
+</action>
   <action name="actionCut">
    <property name="text">
     <string>Cut</string>
@@ -264,7 +291,13 @@
    <property name="shortcut">
     <string>Ctrl+X</string>
    </property>
-  </action>
+     <property name="toolTip">
+    <string>Cut the selection</string>
+   </property>
+   <property name="whatsThis">
+    <string>Removes the selected text and places it on the clipboard.</string>
+   </property>
+</action>
   <action name="actionCopy">
    <property name="text">
     <string>Copy</string>
@@ -272,7 +305,13 @@
    <property name="shortcut">
     <string>Ctrl+C</string>
    </property>
-  </action>
+     <property name="toolTip">
+    <string>Copy the selection</string>
+   </property>
+   <property name="whatsThis">
+    <string>Copies the selected text to the clipboard without removing it.</string>
+   </property>
+</action>
   <action name="actionPaste">
    <property name="text">
     <string>Paste</string>
@@ -280,7 +319,13 @@
    <property name="shortcut">
     <string>Ctrl+V</string>
    </property>
-  </action>
+     <property name="toolTip">
+    <string>Paste from clipboard</string>
+   </property>
+   <property name="whatsThis">
+    <string>Inserts the clipboard's contents at the cursor position.</string>
+   </property>
+</action>
   <action name="actionFind">
    <property name="text">
     <string>Find</string>
@@ -291,7 +336,10 @@
    <property name="shortcut">
     <string>Ctrl+F</string>
    </property>
-  </action>
+     <property name="whatsThis">
+    <string>Opens a dialog to search for text in the editor, with optional case-sensitive, whole-word, and highlight-all matching.</string>
+   </property>
+</action>
   <action name="actionReplace">
    <property name="text">
     <string>Replace</string>
@@ -302,7 +350,10 @@
    <property name="shortcut">
     <string>Ctrl+H</string>
    </property>
-  </action>
+     <property name="whatsThis">
+    <string>Opens a dialog to find and replace text in the editor, one match at a time or all at once.</string>
+   </property>
+</action>
   <action name="actionSelect_All">
    <property name="text">
     <string>Select All</string>
@@ -310,7 +361,13 @@
    <property name="shortcut">
     <string>Ctrl+A</string>
    </property>
-  </action>
+     <property name="toolTip">
+    <string>Select all text</string>
+   </property>
+   <property name="whatsThis">
+    <string>Selects the entire contents of the editor.</string>
+   </property>
+</action>
   <action name="actionShow_Tool_Bar">
    <property name="checkable">
     <bool>true</bool>
@@ -321,7 +378,10 @@
    <property name="toolTip">
     <string>Show/Hide the tool bar</string>
    </property>
-  </action>
+     <property name="whatsThis">
+    <string>Shows or hides the toolbar along the top of the window.</string>
+   </property>
+</action>
   <action name="actionShow_Status_Bar">
    <property name="checkable">
     <bool>true</bool>
@@ -332,7 +392,10 @@
    <property name="toolTip">
     <string>Show/hide the status bar</string>
    </property>
-  </action>
+     <property name="whatsThis">
+    <string>Shows or hides the status bar along the bottom of the window.</string>
+   </property>
+</action>
   <action name="actionShow_Registers">
    <property name="checkable">
     <bool>true</bool>
@@ -340,7 +403,13 @@
    <property name="text">
     <string>Show Registers</string>
    </property>
-  </action>
+     <property name="toolTip">
+    <string>Show/hide the Registers dock</string>
+   </property>
+   <property name="whatsThis">
+    <string>Toggles a dock listing all 32 CPU registers (x0-x31), their ABI names, and current values. Registers that changed on the last step are highlighted.</string>
+   </property>
+</action>
   <action name="actionShow_Memory">
    <property name="checkable">
     <bool>true</bool>
@@ -348,7 +417,13 @@
    <property name="text">
     <string>Show Memory</string>
    </property>
-  </action>
+     <property name="toolTip">
+    <string>Show/hide the Memory dock</string>
+   </property>
+   <property name="whatsThis">
+    <string>Toggles a dock showing a hex dump of emulator memory. Jump to any address, or check Follow PC to track the program counter automatically.</string>
+   </property>
+</action>
   <action name="actionShow_Output">
    <property name="checkable">
     <bool>true</bool>
@@ -356,7 +431,13 @@
    <property name="text">
     <string>Show Output</string>
    </property>
-  </action>
+     <property name="toolTip">
+    <string>Show/hide the Output dock</string>
+   </property>
+   <property name="whatsThis">
+    <string>Toggles a dock logging assemble/run/breakpoint/error messages.</string>
+   </property>
+</action>
   <action name="actionShow_Disassembly">
    <property name="checkable">
     <bool>true</bool>
@@ -364,7 +445,13 @@
    <property name="text">
     <string>Show Disassembly</string>
    </property>
-  </action>
+     <property name="toolTip">
+    <string>Show/hide the Disassembly dock</string>
+   </property>
+   <property name="whatsThis">
+    <string>Toggles a dock showing disassembled instructions around the current PC. Double-click a row to set or clear a breakpoint.</string>
+   </property>
+</action>
   <action name="actionShow_Stack">
    <property name="checkable">
     <bool>true</bool>
@@ -372,7 +459,13 @@
    <property name="text">
     <string>Show Stack</string>
    </property>
-  </action>
+     <property name="toolTip">
+    <string>Show/hide the Stack dock</string>
+   </property>
+   <property name="whatsThis">
+    <string>Toggles a dock showing memory near the current stack pointer (sp), useful for inspecting function calls and local variables.</string>
+   </property>
+</action>
   <action name="actionShow_PC_History">
    <property name="checkable">
     <bool>true</bool>
@@ -380,7 +473,13 @@
    <property name="text">
     <string>Show PC History</string>
    </property>
-  </action>
+     <property name="toolTip">
+    <string>Show/hide the PC History dock</string>
+   </property>
+   <property name="whatsThis">
+    <string>Toggles a dock listing the last executed program-counter values. Double-click an entry to jump to it in Memory/Disassembly.</string>
+   </property>
+</action>
   <action name="actionZoom_In">
    <property name="text">
     <string>Zoom In</string>
@@ -391,7 +490,10 @@
    <property name="shortcut">
     <string>Ctrl++</string>
    </property>
-  </action>
+     <property name="whatsThis">
+    <string>Increases the editor's font size.</string>
+   </property>
+</action>
   <action name="actionZoom_Out">
    <property name="text">
     <string>Zoom Out</string>
@@ -402,7 +504,10 @@
    <property name="shortcut">
     <string>Ctrl+-</string>
    </property>
-  </action>
+     <property name="whatsThis">
+    <string>Decreases the editor's font size.</string>
+   </property>
+</action>
   <action name="actionZoom_Reset">
    <property name="text">
     <string>Zoom Reset</string>
@@ -413,7 +518,10 @@
    <property name="shortcut">
     <string>Ctrl+0</string>
    </property>
-  </action>
+     <property name="whatsThis">
+    <string>Resets the editor's font size to the default.</string>
+   </property>
+</action>
   <action name="actionAssemble">
    <property name="text">
     <string>Assemble</string>
@@ -424,7 +532,10 @@
    <property name="shortcut">
     <string>F9</string>
    </property>
-  </action>
+     <property name="whatsThis">
+    <string>Saves the file, assembles it with the RISC-V toolchain (riscv64-unknown-elf-as/objcopy), and loads the resulting binary into the emulator, ready to Run or Step.</string>
+   </property>
+</action>
   <action name="actionRun">
    <property name="text">
     <string>Run</string>
@@ -435,7 +546,10 @@
    <property name="shortcut">
     <string>F5</string>
    </property>
-  </action>
+     <property name="whatsThis">
+    <string>Runs the loaded program continuously until it halts, hits a breakpoint, or you click Run again to stop it.</string>
+   </property>
+</action>
   <action name="actionShow_Simulator">
    <property name="text">
     <string>Show Simulator</string>
@@ -446,7 +560,10 @@
    <property name="shortcut">
     <string>F8</string>
    </property>
-  </action>
+     <property name="whatsThis">
+    <string>Opens the full debugging layout in one click: Registers, Disassembly, Memory, Stack, and PC History.</string>
+   </property>
+</action>
   <action name="actionSettings">
    <property name="text">
     <string>Settings</string>
@@ -454,7 +571,10 @@
    <property name="toolTip">
     <string>Editor settings</string>
    </property>
-  </action>
+     <property name="whatsThis">
+    <string>Opens the application settings dialog.</string>
+   </property>
+</action>
   <action name="actionHelp_Contents">
    <property name="text">
     <string>Help Contents</string>
@@ -465,7 +585,10 @@
    <property name="shortcut">
     <string>F1</string>
    </property>
-  </action>
+     <property name="whatsThis">
+    <string>Shows a quick reference of keyboard shortcuts and how the debugging views work.</string>
+   </property>
+</action>
   <action name="actionAbout">
    <property name="text">
     <string>About</string>
@@ -473,12 +596,21 @@
    <property name="toolTip">
     <string>Information about the application</string>
    </property>
-  </action>
+     <property name="whatsThis">
+    <string>Shows version and license information about this application.</string>
+   </property>
+</action>
   <action name="actionStep">
    <property name="text">
     <string>Step</string>
    </property>
-  </action>
+     <property name="toolTip">
+    <string>Execute a single instruction</string>
+   </property>
+   <property name="whatsThis">
+    <string>Executes exactly one instruction at the current program counter, then updates all open views.</string>
+   </property>
+</action>
   <action name="actionPause">
    <property name="text">
     <string>Pause</string>
@@ -486,7 +618,10 @@
    <property name="toolTip">
     <string>Pause the running program</string>
    </property>
-  </action>
+     <property name="whatsThis">
+    <string>Pauses a currently running program without resetting it; Step/Step Over/Step Out become available again.</string>
+   </property>
+</action>
   <action name="actionStep_Over">
    <property name="text">
     <string>Step Over</string>
@@ -497,7 +632,10 @@
    <property name="shortcut">
     <string>F10</string>
    </property>
-  </action>
+     <property name="whatsThis">
+    <string>Executes the next instruction as a single step, unless it's a function call (jal/jalr writing ra) -- in that case, runs the whole call and stops right after it returns.</string>
+   </property>
+</action>
   <action name="actionStep_Out">
    <property name="text">
     <string>Step Out</string>
@@ -508,7 +646,10 @@
    <property name="shortcut">
     <string>Shift+F11</string>
    </property>
-  </action>
+     <property name="whatsThis">
+    <string>Runs until the current function returns (until PC reaches the address in ra), or a breakpoint is hit.</string>
+   </property>
+</action>
  </widget>
  <resources/>
  <connections/>

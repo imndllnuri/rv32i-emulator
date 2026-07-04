@@ -69,4 +69,15 @@ dmypy.json
 
 # macOS
 .DS_Store
-EOF
+
+# Assembler build artifacts (keep the .s sources, ignore the assembled output)
+assembler/*.o
+assembler/*.elf
+assembler/*.bin
+
+# Compiled pybind11 extension module (Windows)
+*.pyd
+
+# CMake (build/ above already covers core/build/)
+CMakeCache.txt
+CMakeFiles/

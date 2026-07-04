@@ -1,4 +1,5 @@
 #include "../include/cpu.hpp"
+#include "common/instr_encoders.hpp"
 #include <cstdint>
 #include <iostream>
 #include <vector>
@@ -12,35 +13,6 @@
     }                                                                          \
   } while (0)
 
-namespace rv32i {
-
-// Helper'lar
-uint32_t make_i_type(uint32_t funct3, uint32_t rs1, uint32_t rd, int32_t imm) {
-  uint32_t uimm = static_cast<uint32_t>(imm) & 0xFFF;
-  return (uimm << 20) | (rs1 << 15) | (funct3 << 12) | (rd << 7) | 0x13;
-}
-
-uint32_t make_r_type(uint32_t funct7, uint32_t rs2, uint32_t rs1,
-                     uint32_t funct3, uint32_t rd) {
-  return (funct7 << 25) | (rs2 << 20) | (rs1 << 15) | (funct3 << 12) |
-         (rd << 7) | 0x33;
-}
-
-uint32_t make_b_type(uint32_t funct3, uint32_t rs1, uint32_t rs2, int32_t imm) {
-  uint32_t uimm = static_cast<uint32_t>(imm);
-  uint32_t imm12 = (uimm >> 12) & 1;
-  uint32_t imm11 = (uimm >> 11) & 1;
-  uint32_t imm10_5 = (uimm >> 5) & 0x3F;
-  uint32_t imm4_1 = (uimm >> 1) & 0xF;
-  return (imm12 << 31) | (imm10_5 << 25) | (rs2 << 20) | (rs1 << 15) |
-         (funct3 << 12) | (imm4_1 << 8) | (imm11 << 7) | 0b1100011;
-}
-
-uint32_t make_ebreak() {
-  return (1 << 20) | (0 << 15) | (0 << 12) | (0 << 7) | 0b1110011; // imm=1
-}
-
-} // namespace rv32i
 
 int main() {
   using namespace rv32i;

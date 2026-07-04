@@ -154,11 +154,58 @@ class ReplaceDialog(QDialog):
             self.text_edit.setTextCursor(new_cursor)
             self._update_status_with_current()
 
+    def _current_selection_matches_term(self):
+        term = self.findLineEdit.text()
+        if not term:
+            return False
+        cursor = self.text_edit.textCursor()
+        if not cursor.hasSelection():
+            return False
+        selected = cursor.selectedText()
+        if self.caseSensitiveCheckBox.isChecked():
+            return selected == term
+        return selected.lower() == term.lower()
+
     def replace_current(self):
-        self.statusLabel.setText("replace current triggered")
+        """Replace the currently selected match (if the selection is one),
+        then advance to the next match -- mirrors the common editor
+        convention where the first click on Replace just arms the next
+        match via find_next(), and a second click actually replaces it."""
+        if not self.findLineEdit.text():
+            return
+        if self._current_selection_matches_term():
+            cursor = self.text_edit.textCursor()
+            cursor.insertText(self.replaceWithLineEdit.text())
+            self.text_edit.setTextCursor(cursor)
+            self.find_all_matches()
+        self.find_next()
 
     def replace_all(self):
-        self.statusLabel.setText("replace all triggered")
+        term = self.findLineEdit.text()
+        if not term:
+            return
+
+        replacement = self.replaceWithLineEdit.text()
+        flags = self._get_flags()
+        document = self.text_edit.document()
+
+        edit_cursor = QTextCursor(document)
+        edit_cursor.beginEditBlock()
+        count = 0
+        search_cursor = QTextCursor(document)
+        search_cursor.movePosition(QTextCursor.Start)
+        while True:
+            search_cursor = document.find(term, search_cursor, flags)
+            if search_cursor.isNull():
+                break
+            search_cursor.insertText(replacement)
+            count += 1
+        edit_cursor.endEditBlock()
+
+        self.find_all_matches()
+        self.statusLabel.setText(
+            f"Replaced {count} occurrence{'s' if count != 1 else ''}"
+        )
 
     def closeEvent(self, event): # type: ignore 
         """Clear all highlights when the dialog is closed."""

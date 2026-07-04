@@ -132,6 +132,14 @@ class MemoryWidget(QWidget):
                 pc = self.cpu.get_pc()
             self.go_to_address(pc)
 
+    def set_controls_enabled(self, enabled):
+        """Disable Go/Refresh while the CPU is running on a background
+        thread, so a click here can't race the RunWorker's cpu.step()
+        calls. Address entry and Follow PC stay usable since they don't
+        touch the CPU directly until Go/the next auto-update fires."""
+        self.goButton.setEnabled(enabled)
+        self.refreshButton.setEnabled(enabled)
+
     def closeEvent(self, event):
         """Override close to emit a signal if needed (the dock will hide)."""
         # Nothing special needed, but you could emit a signal if you want

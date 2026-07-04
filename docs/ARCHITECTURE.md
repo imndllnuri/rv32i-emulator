@@ -3,8 +3,10 @@
 Current directory layout:
 
 ```
-easy68k-linux-emulator/
+rv32i-emulator/
 ├── README.md
+├── CONTRIBUTING.md
+├── LICENSE
 ├── future_plans.md
 ├── docs/
 │   └── ARCHITECTURE.md
@@ -13,8 +15,6 @@ easy68k-linux-emulator/
 │   │   ├── cpu.hpp
 │   │   ├── csr.hpp
 │   │   ├── decode.hpp
-│   │   ├── device.hpp
-│   │   ├── devices/            # clint.hpp, plic.hpp, uart.hpp
 │   │   ├── exception.hpp
 │   │   ├── execute.hpp
 │   │   ├── fetch.hpp
@@ -25,11 +25,9 @@ easy68k-linux-emulator/
 │   │   ├── cpu.cc
 │   │   ├── csr.cpp
 │   │   ├── decode.cc
-│   │   ├── device/              # clint.cpp, plic.cpp, uart.cpp
 │   │   ├── execute.cpp
 │   │   ├── fetch.cpp
 │   │   └── pycpu.cpp            # pybind11 bindings exposed to the GUI
-│   ├── instructions/             # per-family instruction implementations
 │   ├── tests/                    # one ctest executable per instruction/family
 │   └── main.cc
 ├── assembler/                    # example RISC-V .s sources (assembled via riscv64-unknown-elf-as)

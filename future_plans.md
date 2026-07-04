@@ -10,48 +10,48 @@
 - As you step, highlight the current instruction.
 - Show the raw instruction bytes alongside the disassembled mnemonic and operands.
 
-### 3. **Breakpoint Manager**
-- Allow setting/clearing breakpoints on specific addresses (e.g., double-click in the disassembly view).
-- A list of active breakpoints that can be enabled/disabled or removed.
-- When a breakpoint is hit, pause execution and highlight the line.
+### 3. **Breakpoint Manager** — done (`gui/disassembly_window.py`)
+- Double-click a row in the disassembly view to toggle a breakpoint. ✅
+- Run pauses when a breakpoint is hit and reports the address in the status bar. ✅
+- Still open: a dedicated breakpoints list panel (enable/disable/remove without hunting through disassembly).
 
 ### 4. **Stack View** — done (`gui/stack_window.py`)
 - Show the contents near the current stack pointer (sp), with annotations for saved registers or return addresses. ✅
 - Helpful for understanding function calls and local variables.
 
-### 5. **Program Counter (PC) Tracker**
-- A small indicator showing the current PC value, maybe with a button to jump to that address in memory/disassembly.
-- Option to show a history of the last few executed PCs (like a call stack).
+### 5. **Program Counter (PC) Tracker** — done (`gui/main_window.py`)
+- Permanent PC status-bar label, plus a "PC History" dock (last 50 addresses, double-click to jump). ✅
 
-### 6. **Load/Restart Program**
-- Buttons to load a new binary (ELF or raw binary) into memory.
-- A **Reset** button to reset the CPU state (registers, PC) and reload the program.
+### 6. **Load/Restart Program** — done (`gui/main_window.py::assemble`, `_reset_program_state`)
+- Assemble loads a new binary; New/Open reset CPU state (registers, PC) automatically. ✅
 
-### 7. **Execution Controls**
-- **Continue** (already have Run) – runs until breakpoint or halt.
-- **Step Over** – step over a function call (if you implement some minimal debug info, or just treat as a single step).
-- **Step Out** – run until return from current function.
-- **Pause** button to halt a running program.
+### 7. **Execution Controls** — done (`gui/main_window.py`)
+- Run (Continue), Pause, Step, Step Over, Step Out are all implemented. ✅
 
-### 8. **Status Bar / Console**
-- Show current simulation state (running, paused, halted) and any error messages.
-- Display the last instruction executed or a message like "Hit breakpoint at 0x...".
-- Maybe a small log of system calls or console output (if emulating environment calls).
+### 8. **Status Bar / Console** — done (`gui/main_window.py`)
+- Permanent PC/instruction-count/state labels, an Output console dock logging run/breakpoint/error messages. ✅
+- Still open: no system-call or environment-call logging (ECALL is currently a hard trap, not emulated).
 
 ### 9. **Symbol Table / Labels**
 - If you parse an ELF file with debug symbols, show addresses as labels (e.g., `main` instead of `0x1000`).
 - Helps readability in disassembly and breakpoint lists.
 
-### 10. **Configurable Layout**
-- Allow docking or tabbing the various views (registers, memory, disassembly, stack) so the user can arrange them as they like.
-- Save/restore window layouts.
+### 10. **Configurable Layout** — partially done
+- Docking/tabbing of Registers/Memory/Disassembly/Stack/PC History/Output is implemented with a sensible default arrangement (`gui/main_window.py::_setup_default_layout`). ✅
+- Still open: layout is not saved/restored across restarts (tracked as part of the Settings/persistence work — see the release roadmap in `docs/ARCHITECTURE.md`/project plan).
 
-### 11. **Instruction Counter / Performance Stats**
-- Show how many instructions have been executed so far.
-- Optionally, instructions per second if running continuously.
+### 11. **Instruction Counter / Performance Stats** — partially done
+- Live instruction-executed counter in the status bar. ✅
+- Still open: instructions-per-second while running.
 
-### 12. **Help / About**
-- A quick reference for RISC-V instructions or your emulator's shortcuts.
+### 12. **Help / About** — done (`gui/main_window.py::help_contents`, `about`)
+- Static keyboard-shortcut reference and About dialog exist. ✅
+- In-GUI contextual help: a persistent "?" toolbar button drops into Qt's What's-This mode; every dock and most toolbar actions have explanatory whatsThis/toolTip text. ✅
+
+### 13. **Toolbar/Titlebar polish** — done (`gui/main_window.py`, `gui/main.py`)
+- Real app icon (`resources/icons/app.png`), window title reflects the loaded filename and unsaved-changes state. ✅
+- High-DPI scaling attributes and a `--file` launch argument. ✅
+- Still open: full Settings dialog and persisted window/dock layout (QSettings) — see the release roadmap.
 
 ## ISA roadmap
 
