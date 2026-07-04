@@ -3,14 +3,32 @@ smoke tests. Puts the compiled `rv32i_core` module and the `gui/` package on
 sys.path so tests can import them the same way gui/main_window.py already
 does, without every test file repeating the same path juggling.
 """
+import glob
 import os
 import sys
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CORE_BUILD_DIR = os.path.join(ROOT_DIR, "core", "build")
 GUI_DIR = os.path.join(ROOT_DIR, "gui")
 
-for path in (CORE_BUILD_DIR, GUI_DIR):
+
+def _find_core_build_dir():
+    """Same resolution gui/main_window.py uses: single-config generators
+    (Linux/macOS) put the compiled module directly in core/build/;
+    multi-config generators (Visual Studio, CMake's Windows default) put it
+    in a per-configuration subdirectory like core/build/Release/ instead.
+    """
+    base = os.path.join(ROOT_DIR, "core", "build")
+    candidates = [base] + [
+        os.path.join(base, cfg)
+        for cfg in ("Release", "RelWithDebInfo", "Debug", "MinSizeRel")
+    ]
+    for candidate in candidates:
+        if glob.glob(os.path.join(candidate, "rv32i_core*")):
+            return candidate
+    return base
+
+
+for path in (_find_core_build_dir(), GUI_DIR):
     if path not in sys.path:
         sys.path.insert(0, path)
 
