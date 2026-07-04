@@ -37,6 +37,26 @@ add_executable(emulator main.cc)
 target_link_libraries(emulator PRIVATE riscv_core)
 
 # Python bindings using pybind11
+# pybind11 ships its own CMake config inside the active Python environment's
+# site-packages rather than as a system package, so find_package() alone
+# won't locate it unless pybind11_DIR is already set. Auto-detect it from
+# whichever `python3` is on PATH (the venv, if one is active) before falling
+# back to a plain find_package() for systems where pybind11 was installed
+# as a system package instead.
+if(NOT pybind11_DIR)
+  find_program(PYTHON_EXECUTABLE NAMES python3 python)
+  if(PYTHON_EXECUTABLE)
+    execute_process(
+      COMMAND ${PYTHON_EXECUTABLE} -c "import pybind11; print(pybind11.get_cmake_dir())"
+      OUTPUT_VARIABLE PYBIND11_CMAKE_DIR
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_QUIET
+    )
+    if(PYBIND11_CMAKE_DIR)
+      set(pybind11_DIR "${PYBIND11_CMAKE_DIR}")
+    endif()
+  endif()
+endif()
 find_package(pybind11 REQUIRED)
 
 # Build the Python module – only the wrapper source is needed,

@@ -17,12 +17,34 @@ A Linux-native RISC-V (RV32I + RV32M) emulator with a Qt GUI, inspired by the Wi
 - Memory view in hex format with current program counter highlighted, jump to any address
 - Disassembly view of the loaded binary
 - Stack view relative to the current stack pointer
+- Breakpoints (toggle in the disassembly view), Step Over/Step Out, and a PC history dock
 - RV32I base ISA + RV32M (multiply/divide) + FENCE/FENCE.I + CSR instructions
 
 ## Planned
 
-See `future_plans.md` for the roadmap: breakpoint manager, PC history, configurable layout.
+See `future_plans.md` for the roadmap: settings/layout persistence, packaged releases (Snap/AppImage/Windows/macOS).
 
 ## Status
 
-Active personal project — core CPU emulation and the GUI's register/memory/disassembly/stack views are functional; breakpoints and layout persistence are still in progress.
+Active project — core CPU emulation, breakpoints, PC history, and the GUI's register/memory/disassembly/stack views are all functional. Settings/layout persistence, packaging, and CI are in progress; see `future_plans.md`.
+
+## Building
+
+```sh
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt -r requirements-dev.txt
+cmake -S core -B core/build -DCMAKE_BUILD_TYPE=Release
+cmake --build core/build -j
+ctest --test-dir core/build
+python gui/main.py
+```
+
+`core/CMakeLists.txt` auto-detects `pybind11`'s CMake directory from whichever `python3` is on `PATH`, so no manual `-Dpybind11_DIR` flag is needed as long as the venv above is active. Assembling `.s` files from the GUI requires `riscv64-unknown-elf-as`/`objcopy` on `PATH` (see `CONTRIBUTING.md`).
+
+## Contributing
+
+See `CONTRIBUTING.md`.
+
+## License
+
+MIT — see `LICENSE`.
