@@ -1,3 +1,7 @@
+# Only the top-level package is pinned. PyQt5-Qt5/PyQt5-sip are transitive
+# dependencies whose available versions differ per platform (e.g. Windows
+# wheels for PyQt5-Qt5 top out at 5.15.2, well below the Linux wheel version)
+# -- pinning them here breaks `pip install` on any platform whose latest
+# build doesn't match exactly. Let pip resolve them within PyQt5's own
+# declared constraints instead.
 PyQt5==5.15.11
-PyQt5-Qt5==5.15.18
-PyQt5_sip==12.18.0
