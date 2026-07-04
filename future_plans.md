@@ -36,9 +36,9 @@
 - If you parse an ELF file with debug symbols, show addresses as labels (e.g., `main` instead of `0x1000`).
 - Helps readability in disassembly and breakpoint lists.
 
-### 10. **Configurable Layout** — partially done
-- Docking/tabbing of Registers/Memory/Disassembly/Stack/PC History/Output is implemented with a sensible default arrangement (`gui/main_window.py::_setup_default_layout`). ✅
-- Still open: layout is not saved/restored across restarts (tracked as part of the Settings/persistence work — see the release roadmap in `docs/ARCHITECTURE.md`/project plan).
+### 10. **Configurable Layout** — done (`gui/main_window.py`, `gui/settings.py`)
+- Docking/tabbing of Registers/Memory/Disassembly/Stack/PC History/Output, with a sensible default arrangement. ✅
+- Window geometry and dock layout now persist across restarts (QSettings), with a "Reset to Default Layout" escape hatch in Settings if a restored/user-arranged layout gets into a bad state. ✅
 
 ### 11. **Instruction Counter / Performance Stats** — partially done
 - Live instruction-executed counter in the status bar. ✅
@@ -51,7 +51,11 @@
 ### 13. **Toolbar/Titlebar polish** — done (`gui/main_window.py`, `gui/main.py`)
 - Real app icon (`resources/icons/app.png`), window title reflects the loaded filename and unsaved-changes state. ✅
 - High-DPI scaling attributes and a `--file` launch argument. ✅
-- Still open: full Settings dialog and persisted window/dock layout (QSettings) — see the release roadmap.
+
+### 14. **Settings & Recent Files** — done (`gui/settings.py`, `gui/settings_dialog.py`)
+- A real Settings dialog (Editor font size, Layout reset) replaces the old stub. ✅
+- Recent Files is a real populated menu instead of a stub message. ✅
+- Still open: theme configurability (only one hardcoded dark theme exists today).
 
 ## ISA roadmap
 

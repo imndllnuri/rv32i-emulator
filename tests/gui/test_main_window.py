@@ -113,3 +113,8 @@ def test_memory_and_stack_controls_disabled_while_running(window):
     window.stack_widget.set_controls_enabled(True)
     assert window.memory_widget.goButton.isEnabled() is True
     assert window.stack_widget.goButton.isEnabled() is True
+
+
+def test_register_and_disassembly_tables_use_alternating_row_colors(window):
+    assert window.register_widget.registerTable.alternatingRowColors() is True
+    assert window.disasm_widget.disasmTable.alternatingRowColors() is True
