@@ -34,6 +34,7 @@ class RegisterWidget(QWidget):
         self.registerTable.setColumnCount(4)
         self.registerTable.setHorizontalHeaderLabels(["Register", "ABI", "Hex", "Dec"])
         self.registerTable.verticalHeader().setVisible(False)
+        self.registerTable.setAlternatingRowColors(True)
         header = self.registerTable.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
 

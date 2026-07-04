@@ -31,6 +31,7 @@ class DisassemblyWidget(QWidget):
         self._row_addrs = []
 
         self.disasmTable.setColumnCount(4)
+        self.disasmTable.setAlternatingRowColors(True)
         header = self.disasmTable.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeToContents)
 
