@@ -12,6 +12,7 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch: {} # manual trigger, e.g. for testing the packaging steps without cutting a real tag
 
 permissions:
   contents: write
@@ -72,6 +73,7 @@ jobs:
   create-draft-release:
     name: Create draft GitHub Release
     needs: build
+    if: github.event_name == 'push' # skip on manual workflow_dispatch test runs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
