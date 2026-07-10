@@ -26,7 +26,7 @@ See `future_plans.md` for the roadmap: Windows/macOS packaged releases (PyInstal
 
 ## Status
 
-Active project — core CPU emulation, breakpoints, PC history, settings/layout persistence, and the GUI's register/memory/disassembly/stack views are all functional. A self-contained Linux AppImage is built automatically on tagged releases (see below); Windows/macOS packaging is still in progress. See `future_plans.md`.
+Active project — core CPU emulation, breakpoints, PC history, settings/layout persistence, and the GUI's register/memory/disassembly/stack views are all functional. First tagged release: [`v0.1.0-beta.1`](https://github.com/imndllnuri/rv32i-emulator/releases), Linux-only (a self-contained AppImage, see below). Windows/macOS packaging is planned for `v0.1.0-beta.2` — see `future_plans.md` and `CHANGELOG.md`.
 
 ## Packaged releases (Linux)
 
