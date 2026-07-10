@@ -55,6 +55,17 @@ if module_path not in sys.path:
 import rv32i_core
 
 
+def _app_version():
+    """Read the app version from the repo-root VERSION file (single source
+    of truth, also used by RELEASE_PROCESS.md when cutting a release)."""
+    version_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "VERSION"))
+    try:
+        with open(version_path) as f:
+            return f.read().strip()
+    except OSError:
+        return "unknown"
+
+
 def _vendored_toolchain_dir():
     """The platform-specific vendor/toolchain/<platform>/bin/ produced by
     scripts/fetch_toolchain.py -- matches that script's platform-key logic."""
@@ -1056,6 +1067,7 @@ class MainWindow(QMainWindow):
         QMessageBox.about(
             self, "About",
             "<h3>RISC-V Linux Emulator</h3>"
+            f"<p>Version {_app_version()}</p>"
             "<p>A RISC-V (RV32I + RV32M) CPU emulator with a PyQt5 GUI: "
             "assemble, run, and step through programs with live register, "
             "memory, disassembly, and stack views.</p>"

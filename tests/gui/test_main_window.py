@@ -118,3 +118,9 @@ def test_memory_and_stack_controls_disabled_while_running(window):
 def test_register_and_disassembly_tables_use_alternating_row_colors(window):
     assert window.register_widget.registerTable.alternatingRowColors() is True
     assert window.disasm_widget.disasmTable.alternatingRowColors() is True
+
+
+def test_app_version_reads_version_file():
+    version = main_window._app_version()
+    assert version != "unknown"
+    assert version[0].isdigit()
