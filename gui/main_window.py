@@ -812,8 +812,12 @@ class MainWindow(QMainWindow):
             with tempfile.NamedTemporaryFile(suffix='.elf', delete=False) as tmp_elf:
                 elf_path = tmp_elf.name
 
+            # _zicsr: modern binutils split the CSR instructions (CSRRW/RS/RC/
+            # WI/SI/CI) out of the base ISA string, so plain "rv32im" rejects
+            # them with "extension `zicsr' required" even though the core
+            # fully implements and tests them (core/tests/test_csrr*.cc).
             subprocess.run(
-                [as_path, "-march=rv32im", "-o", elf_path, self.current_file],
+                [as_path, "-march=rv32im_zicsr", "-o", elf_path, self.current_file],
                 check=True, capture_output=True, text=True
             )
 
