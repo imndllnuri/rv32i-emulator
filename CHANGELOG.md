@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/) (see
 
 ## [Unreleased]
 
+### Added
+- 13 example RISC-V programs under `assembler/` (fibonacci, factorial
+  iterative/recursive, gcd, array sum/max/reverse, bubble sort, string
+  length, multiplication table, bitwise ops, popcount, CSR scratch demo),
+  plus `assembler/README.md` indexing all of them with expected results.
+
+### Fixed
+- GUI's Assemble step used `-march=rv32im`, which modern binutils rejects
+  for any CSR instruction (`extension 'zicsr' required`) — CSR support was
+  fully implemented and unit-tested in the core (`core/tests/test_csrr*.cc`)
+  but unreachable from the GUI. Now assembles with `-march=rv32im_zicsr`.
+
 ## [0.1.0-beta.1] - 2026-07-11
 
 First public release. Everything below was already implemented as a personal
