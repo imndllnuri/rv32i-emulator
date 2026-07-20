@@ -2,6 +2,18 @@
 
 A Linux-native RISC-V (RV32I + RV32M) emulator with a Qt GUI, inspired by the Windows-only Easy68k debugging experience. Personal project to learn CPU emulation, ISA design, and CMake/C++ project structure.
 
+## Examples
+
+14 ready-to-run RISC-V programs live in [`assembler/`](assembler/) — open one in the GUI (`File > Open`) and hit Assemble then Run/Step. See [`assembler/README.md`](assembler/README.md) for the full index with expected results.
+
+| | | |
+|---|---|---|
+| [`test_sum.s`](assembler/test_sum.s) | [`fibonacci.s`](assembler/fibonacci.s) | [`factorial_iterative.s`](assembler/factorial_iterative.s) |
+| [`factorial_recursive.s`](assembler/factorial_recursive.s) | [`gcd.s`](assembler/gcd.s) | [`array_sum.s`](assembler/array_sum.s) |
+| [`array_max.s`](assembler/array_max.s) | [`array_reverse.s`](assembler/array_reverse.s) | [`bubble_sort.s`](assembler/bubble_sort.s) |
+| [`string_length.s`](assembler/string_length.s) | [`multiplication_table.s`](assembler/multiplication_table.s) | [`bitwise_ops.s`](assembler/bitwise_ops.s) |
+| [`count_set_bits.s`](assembler/count_set_bits.s) | [`csr_scratch.s`](assembler/csr_scratch.s) | |
+
 ## Components
 
 - **`core/`** — C++ RV32I/RV32M CPU core: instruction decoding/execution, registers, memory model, exposed to Python via pybind11 (CMake build, with its own test suite)
