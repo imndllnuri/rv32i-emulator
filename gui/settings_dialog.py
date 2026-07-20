@@ -9,10 +9,10 @@ from PyQt5.QtWidgets import (
 
 
 class SettingsDialog(QDialog):
-    """Editor preferences and dock-layout controls. Kept to what's actually
-    functional today -- no fake "Appearance" tab, since the app only has a
-    single hardcoded dark theme right now (see the project roadmap for
-    theme configurability, deferred past beta-1)."""
+    """Editor preferences and debug-panel layout controls. Kept to what's
+    actually functional today -- no fake "Appearance" tab, since the app
+    only has a single hardcoded dark theme right now (see the project
+    roadmap for theme configurability, deferred past beta-1)."""
 
     def __init__(self, main_window, parent=None):
         super().__init__(parent)
@@ -53,8 +53,8 @@ class SettingsDialog(QDialog):
         layout = QVBoxLayout(tab)
 
         info = QLabel(
-            "Window and dock positions are saved automatically when you "
-            "close the application."
+            "Window size and the debug panel's split are saved automatically "
+            "when you close the application."
         )
         info.setWordWrap(True)
         layout.addWidget(info)
@@ -62,8 +62,8 @@ class SettingsDialog(QDialog):
         reset_row = QHBoxLayout()
         reset_button = QPushButton("Reset to Default Layout", tab)
         reset_button.setWhatsThis(
-            "Restores the default arrangement of Registers/Memory/Disassembly/"
-            "Stack/PC History docks, in case the layout has gotten into an "
+            "Restores the default editor/debug-panel split and reopens the "
+            "panel if it's hidden, in case the layout has gotten into an "
             "unusable state."
         )
         reset_button.clicked.connect(self._on_reset_layout)
@@ -83,7 +83,7 @@ class SettingsDialog(QDialog):
     def _on_reset_layout(self):
         reply = QMessageBox.question(
             self, "Reset Layout",
-            "Reset docks to their default positions?",
+            "Reset the debug panel to its default layout?",
             QMessageBox.Yes | QMessageBox.No,
         )
         if reply == QMessageBox.Yes:

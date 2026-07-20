@@ -88,6 +88,8 @@
     <addaction name="actionShow_Tool_Bar"/>
     <addaction name="actionShow_Status_Bar"/>
     <addaction name="separator"/>
+    <addaction name="actionShow_Debug_Panel"/>
+    <addaction name="separator"/>
     <addaction name="actionShow_Registers"/>
     <addaction name="actionShow_Memory"/>
     <addaction name="actionShow_Disassembly"/>
@@ -402,88 +404,84 @@
     <string>Shows or hides the status bar along the bottom of the window.</string>
    </property>
 </action>
-  <action name="actionShow_Registers">
+  <action name="actionShow_Debug_Panel">
    <property name="checkable">
     <bool>true</bool>
    </property>
+   <property name="text">
+    <string>Show Debug Panel</string>
+   </property>
+     <property name="toolTip">
+    <string>Show/hide the debug panel</string>
+   </property>
+   <property name="whatsThis">
+    <string>Shows or hides the whole debug panel below the editor (Registers/Memory/Disassembly/Stack/PC History/Output tabs), so you can give the editor the full window when you just want to write code.</string>
+   </property>
+</action>
+  <action name="actionShow_Registers">
    <property name="text">
     <string>Show Registers</string>
    </property>
      <property name="toolTip">
-    <string>Show/hide the Registers dock</string>
+    <string>Switch the debug panel to the Registers tab</string>
    </property>
    <property name="whatsThis">
-    <string>Toggles a dock listing all 32 CPU registers (x0-x31), their ABI names, and current values. Registers that changed on the last step are highlighted.</string>
+    <string>Switches the debug panel to the Registers tab: all 32 CPU registers (x0-x31), their ABI names, and current values. Registers that changed on the last step are highlighted.</string>
    </property>
 </action>
   <action name="actionShow_Memory">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
    <property name="text">
     <string>Show Memory</string>
    </property>
      <property name="toolTip">
-    <string>Show/hide the Memory dock</string>
+    <string>Switch the debug panel to the Memory tab</string>
    </property>
    <property name="whatsThis">
-    <string>Toggles a dock showing a hex dump of emulator memory. Jump to any address, or check Follow PC to track the program counter automatically.</string>
+    <string>Switches the debug panel to the Memory tab: a hex dump of emulator memory. Jump to any address, or check Follow PC to track the program counter automatically.</string>
    </property>
 </action>
   <action name="actionShow_Output">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
    <property name="text">
     <string>Show Output</string>
    </property>
      <property name="toolTip">
-    <string>Show/hide the Output dock</string>
+    <string>Switch the debug panel to the Output tab</string>
    </property>
    <property name="whatsThis">
-    <string>Toggles a dock logging assemble/run/breakpoint/error messages.</string>
+    <string>Switches the debug panel to the Output tab, logging assemble/run/breakpoint/error messages.</string>
    </property>
 </action>
   <action name="actionShow_Disassembly">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
    <property name="text">
     <string>Show Disassembly</string>
    </property>
      <property name="toolTip">
-    <string>Show/hide the Disassembly dock</string>
+    <string>Switch the debug panel to the Disassembly tab</string>
    </property>
    <property name="whatsThis">
-    <string>Toggles a dock showing disassembled instructions around the current PC. Double-click a row to set or clear a breakpoint.</string>
+    <string>Switches the debug panel to the Disassembly tab: disassembled instructions around the current PC. Double-click a row to set or clear a breakpoint.</string>
    </property>
 </action>
   <action name="actionShow_Stack">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
    <property name="text">
     <string>Show Stack</string>
    </property>
      <property name="toolTip">
-    <string>Show/hide the Stack dock</string>
+    <string>Switch the debug panel to the Stack tab</string>
    </property>
    <property name="whatsThis">
-    <string>Toggles a dock showing memory near the current stack pointer (sp), useful for inspecting function calls and local variables.</string>
+    <string>Switches the debug panel to the Stack tab: memory near the current stack pointer (sp), useful for inspecting function calls and local variables.</string>
    </property>
 </action>
   <action name="actionShow_PC_History">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
    <property name="text">
     <string>Show PC History</string>
    </property>
      <property name="toolTip">
-    <string>Show/hide the PC History dock</string>
+    <string>Switch the debug panel to the PC History tab</string>
    </property>
    <property name="whatsThis">
-    <string>Toggles a dock listing the last executed program-counter values. Double-click an entry to jump to it in Memory/Disassembly.</string>
+    <string>Switches the debug panel to the PC History tab: the last executed program-counter values. Double-click an entry to jump to it in Memory/Disassembly.</string>
    </property>
 </action>
   <action name="actionZoom_In">
@@ -561,13 +559,13 @@
     <string>Show Simulator</string>
    </property>
    <property name="toolTip">
-    <string>Opens the simulator window</string>
+    <string>Show the debug panel's Disassembly tab</string>
    </property>
    <property name="shortcut">
     <string>F8</string>
    </property>
      <property name="whatsThis">
-    <string>Opens the full debugging layout in one click: Registers, Disassembly, Memory, Stack, and PC History.</string>
+    <string>Opens the debug panel (if hidden) and switches it to the Disassembly tab in one click.</string>
    </property>
 </action>
   <action name="actionSettings">

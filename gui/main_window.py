@@ -11,8 +11,8 @@ from PyQt5 import uic
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QTextCursor, QFont, QIcon, QCursor
 from PyQt5.QtWidgets import (
-    QDockWidget, QFileDialog, QMainWindow, QMessageBox, QListWidget,
-    QPlainTextEdit, QStyle, QLabel, QWhatsThis, QMenu,
+    QFileDialog, QMainWindow, QMessageBox, QListWidget,
+    QPlainTextEdit, QStyle, QLabel, QWhatsThis, QMenu, QSplitter, QTabWidget,
 )
 
 from find_dialog import FindDialog
@@ -197,8 +197,8 @@ UI_FILE = os.path.join(os.path.dirname(__file__), "./ui/main_window.ui")
 APP_ICON_PATH = os.path.join(os.path.dirname(__file__), "../resources/icons/app.png")
 APP_NAME = "rv32i-emulator"
 
-# A single dark theme tying the editor, docks, and chrome together so the
-# app reads as one cohesive tool instead of mismatched default widgets.
+# A single dark theme tying the editor, debug panel, and chrome together so
+# the app reads as one cohesive tool instead of mismatched default widgets.
 DARK_STYLE = """
 QMainWindow, QDialog { background-color: #252526; color: #D4D4D4; }
 QMenuBar { background-color: #2D2D30; color: #D4D4D4; }
@@ -208,8 +208,8 @@ QMenu::item:selected { background-color: #094771; }
 QToolBar { background-color: #2D2D30; border: none; spacing: 4px; padding: 2px; }
 QStatusBar { background-color: #007ACC; color: #FFFFFF; }
 QStatusBar QLabel { color: #FFFFFF; }
-QDockWidget { color: #D4D4D4; titlebar-close-icon: none; }
-QDockWidget::title { background-color: #2D2D30; padding: 4px; }
+QSplitter::handle { background-color: #3E3E42; }
+QSplitter::handle:vertical { height: 4px; }
 QPlainTextEdit, QTextEdit, QLineEdit, QSpinBox {
     background-color: #1E1E1E; color: #D4D4D4;
     border: 1px solid #3E3E42; selection-background-color: #264F78;
@@ -294,8 +294,6 @@ class MainWindow(QMainWindow):
 
         self.actionShow_Tool_Bar.toggled.connect(self.toggle_toolbar)
         self.actionShow_Status_Bar.toggled.connect(self.toggle_statusbar)
-        # self.actionShow_Registers.toggled.connect(self.toggle_registers)
-        self.actionShow_Memory.toggled.connect(self.toggle_memory)
         self.actionShow_Tool_Bar.setChecked(True)
         self.actionShow_Status_Bar.setChecked(True)
 
@@ -319,120 +317,87 @@ class MainWindow(QMainWindow):
         self.actionStep_Out.triggered.connect(self.step_out)
         self.actionPause.triggered.connect(self.pause)
 
-        # Every dock gets an explicit objectName (required for
-        # QMainWindow.saveState()/restoreState() to reliably round-trip a
-        # layout) and is recorded in self.docks under a stable short key, so
-        # later code (settings persistence, "show all" helpers) can iterate
-        # by name instead of hard-coding each dock attribute individually.
-        self.docks = {}
+        # //debug panel: Registers/Memory/Disassembly/Stack/PC History/Output
+        # all live in one QTabWidget instead of six separate QDockWidgets.
+        # Multiple docks floating/tiled at once was the actual problem being
+        # fixed here -- they could spill off screen and become unmanageable,
+        # especially maximized. One panel with tabs means only one view is
+        # visible at a time, at a size you control via the splitter below.
+        self.debug_tabs = QTabWidget(self)
+        self.debug_tabs.setObjectName("debug_tabs")
 
-        # //register window dock
-        self.register_dock = QDockWidget("Registers", self)
-        self.register_dock.setObjectName("dock_registers")
         self.register_widget = RegisterWidget(self)
         registers_help = ("Lists all 32 CPU registers (x0-x31) with their ABI names and "
                           "current values. Registers changed by the last step are highlighted.")
-        self.register_dock.setWhatsThis(registers_help)
         self.register_widget.setWhatsThis(registers_help)
-        self.register_dock.setWidget(self.register_widget)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.register_dock)
-        self.register_dock.setVisible(False)                # hidden by default
-        self.docks["registers"] = self.register_dock
-
-        # Forward status messages from register widget to main status bar
+        self.debug_tabs.addTab(self.register_widget, "Registers")
         self.register_widget.statusMessage.connect(self.statusbar.showMessage)
 
-        # When the internal Close button is clicked, hide the dock
-        self.register_widget.closeRequested.connect(self.register_dock.hide)
-
-        # Synchronize menu action with dock visibility
-        self.actionShow_Registers.toggled.connect(self.on_show_registers_toggled)
-        self.register_dock.visibilityChanged.connect(self.actionShow_Registers.setChecked)
-
-        # //memory window dock
-        self.memory_dock = QDockWidget("Memory", self)
-        self.memory_dock.setObjectName("dock_memory")
         self.memory_widget = MemoryWidget(self)
         memory_help = ("Shows a hex dump of emulator memory. Enter an address and click Go "
                       "to jump there, or check Follow PC to track the program counter.")
-        self.memory_dock.setWhatsThis(memory_help)
         self.memory_widget.setWhatsThis(memory_help)
-        self.memory_dock.setWidget(self.memory_widget)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.memory_dock)
-        self.memory_dock.setVisible(False)
-        self.docks["memory"] = self.memory_dock
+        self.debug_tabs.addTab(self.memory_widget, "Memory")
 
-        self.actionShow_Memory.toggled.connect(self.memory_dock.setVisible)
-        self.memory_dock.visibilityChanged.connect(self.actionShow_Memory.setChecked)
-        # Connect the action
-
-        # //disassembly window dock
-        self.disasm_dock = QDockWidget("Disassembly", self)
-        self.disasm_dock.setObjectName("dock_disassembly")
         self.disasm_widget = DisassemblyWidget(self)
         disasm_help = ("Shows disassembled instructions around the current PC (highlighted). "
                        "Double-click a row to set or clear a breakpoint there.")
-        self.disasm_dock.setWhatsThis(disasm_help)
         self.disasm_widget.setWhatsThis(disasm_help)
-        self.disasm_dock.setWidget(self.disasm_widget)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.disasm_dock)
-        self.disasm_dock.setVisible(False)
-        self.docks["disassembly"] = self.disasm_dock
-
+        self.debug_tabs.addTab(self.disasm_widget, "Disassembly")
         self.disasm_widget.breakpointsChanged.connect(self.on_breakpoints_changed)
-        self.actionShow_Disassembly.toggled.connect(self.disasm_dock.setVisible)
-        self.disasm_dock.visibilityChanged.connect(self.actionShow_Disassembly.setChecked)
 
-        # //stack window dock
-        self.stack_dock = QDockWidget("Stack", self)
-        self.stack_dock.setObjectName("dock_stack")
         self.stack_widget = StackWidget(self)
         stack_help = ("Shows memory near the current stack pointer (sp) -- useful for "
                      "inspecting function-call frames and local variables.")
-        self.stack_dock.setWhatsThis(stack_help)
         self.stack_widget.setWhatsThis(stack_help)
-        self.stack_dock.setWidget(self.stack_widget)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.stack_dock)
-        self.stack_dock.setVisible(False)
-        self.docks["stack"] = self.stack_dock
+        self.debug_tabs.addTab(self.stack_widget, "Stack")
 
-        self.actionShow_Stack.toggled.connect(self.stack_dock.setVisible)
-        self.stack_dock.visibilityChanged.connect(self.actionShow_Stack.setChecked)
-
-        # //PC history dock
-        self.pc_history_dock = QDockWidget("PC History", self)
-        self.pc_history_dock.setObjectName("dock_pc_history")
         self.pc_history_list = QListWidget(self)
         pc_history_help = ("Lists the last executed program-counter values. Double-click an "
-                           "entry to jump to it in the Memory and Disassembly docks.")
-        self.pc_history_dock.setWhatsThis(pc_history_help)
+                           "entry to jump to it in the Memory and Disassembly tabs.")
         self.pc_history_list.setWhatsThis(pc_history_help)
         self.pc_history_list.itemDoubleClicked.connect(self.on_pc_history_item_double_clicked)
-        self.pc_history_dock.setWidget(self.pc_history_list)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.pc_history_dock)
-        self.pc_history_dock.setVisible(False)
-        self.docks["pc_history"] = self.pc_history_dock
+        self.debug_tabs.addTab(self.pc_history_list, "PC History")
 
-        self.actionShow_PC_History.toggled.connect(self.pc_history_dock.setVisible)
-        self.pc_history_dock.visibilityChanged.connect(self.actionShow_PC_History.setChecked)
-
-        # //output console dock
-        self.output_dock = QDockWidget("Output", self)
-        self.output_dock.setObjectName("dock_output")
         self.output_console = QPlainTextEdit(self)
         output_help = "Logs assemble/run/breakpoint/error messages as they happen."
-        self.output_dock.setWhatsThis(output_help)
         self.output_console.setWhatsThis(output_help)
         self.output_console.setReadOnly(True)
         self.output_console.setMaximumBlockCount(2000)
         self.output_console.setFont(QFont("Courier New", 10))
-        self.output_dock.setWidget(self.output_console)
-        self.addDockWidget(Qt.BottomDockWidgetArea, self.output_dock)
-        self.output_dock.setVisible(False)
-        self.docks["output"] = self.output_dock
+        self.debug_tabs.addTab(self.output_console, "Output")
 
-        self.actionShow_Output.toggled.connect(self.output_dock.setVisible)
-        self.output_dock.visibilityChanged.connect(self.actionShow_Output.setChecked)
+        # View menu's Show-X actions now jump to a tab (there's nothing to
+        # toggle independently any more, since only one tab is visible at a
+        # time -- the whole panel's visibility is its own action, below).
+        tab_actions = (
+            (self.register_widget, self.actionShow_Registers),
+            (self.memory_widget, self.actionShow_Memory),
+            (self.disasm_widget, self.actionShow_Disassembly),
+            (self.stack_widget, self.actionShow_Stack),
+            (self.pc_history_list, self.actionShow_PC_History),
+            (self.output_console, self.actionShow_Output),
+        )
+        for widget, action in tab_actions:
+            action.triggered.connect(lambda checked=False, w=widget: self.show_debug_tab(w))
+
+        # Editor on top, debug panel below, split so both stay a
+        # controllable size instead of either one dominating the window --
+        # drag the handle to resize, or collapse the panel entirely with
+        # View > Show Debug Panel.
+        editor_layout = self.editor.parentWidget().layout()
+        editor_index = editor_layout.indexOf(self.editor)
+        editor_layout.removeWidget(self.editor)
+        self.main_splitter = QSplitter(Qt.Vertical, self.centralwidget)
+        self.main_splitter.addWidget(self.editor)
+        self.main_splitter.addWidget(self.debug_tabs)
+        self.main_splitter.setCollapsible(0, False)  # editor always stays visible
+        self.main_splitter.setCollapsible(1, True)   # panel can be dragged fully shut
+        self.main_splitter.setStretchFactor(0, 3)
+        self.main_splitter.setStretchFactor(1, 2)
+        editor_layout.insertWidget(editor_index, self.main_splitter)
+
+        self.actionShow_Debug_Panel.toggled.connect(self.set_debug_panel_visible)
 
         # //permanent status bar widgets - always visible, not just transient
         self.pc_status_label = QLabel("PC: --")
@@ -443,48 +408,56 @@ class MainWindow(QMainWindow):
             self.statusbar.addPermanentWidget(label)
 
         self._user_paused = False
-        self._setup_default_layout()
-        # Restore a previously saved window/dock layout if one exists; if
+        self._did_initial_split = False
+        self.actionShow_Debug_Panel.setChecked(True)
+        self.debug_tabs.setCurrentWidget(self.register_widget)
+        # Restore a previously saved window/panel layout if one exists; if
         # not (first run) or it fails to apply (e.g. after a Qt upgrade
-        # changes the saveState() blob format), the default layout above
-        # stands as-is.
+        # changes the saveState() blob format, or an older save references
+        # docks that no longer exist), the default layout above stands.
         self.app_settings.restore_window_state(self)
+        if self.isMaximized():
+            # A maximized window from a previous session should not be
+            # "sticky" on every subsequent launch -- that was one of the
+            # concrete complaints motivating this panel redesign (opening
+            # fullscreen with no easy way back to a normal, resizable
+            # window). Size/position are still restored; only the
+            # maximized flag is dropped.
+            self.showNormal()
         self._setup_icons()
         self._update_action_states()
         self._populate_examples_menu()
 
-    def _setup_default_layout(self):
-        """Arrange the docks into something usable on first launch instead
-        of an empty editor with every debugging view hidden."""
-        self.resizeDocks([self.register_dock, self.disasm_dock],
-                         [300, 300], Qt.Vertical)
-        self.splitDockWidget(self.register_dock, self.disasm_dock, Qt.Vertical)
-        self.tabifyDockWidget(self.memory_dock, self.stack_dock)
-        self.tabifyDockWidget(self.memory_dock, self.pc_history_dock)
-        self.memory_dock.raise_()
+    def _apply_default_split(self):
+        """Editor gets more room than the debug panel by default. Also the
+        escape hatch for Settings > Layout > Reset, in case a dragged split
+        or a hidden panel gets into an unusable state."""
+        total = self.main_splitter.height() or self.height() or 700
+        self.main_splitter.setSizes([int(total * 0.6), int(total * 0.4)])
 
-        # Show a sensible starter set; the rest stay one click away in View.
-        self.actionShow_Registers.setChecked(True)
-        self.actionShow_Disassembly.setChecked(True)
-        self.actionShow_Memory.setChecked(True)
+    def set_debug_panel_visible(self, visible):
+        """Wired to View > Show Debug Panel -- lets the editor take the
+        whole window when you just want to write code, without dragging
+        the splitter handle all the way down by hand every time."""
+        self.debug_tabs.setVisible(visible)
+        if visible and self.main_splitter.sizes()[1] == 0:
+            self._apply_default_split()
+
+    def show_debug_tab(self, widget):
+        """Wired to the View menu's Show-X actions: reveals the debug panel
+        if it's hidden and switches to the given tab. These used to toggle
+        per-view dock visibility; now there's one panel with tabs, so
+        triggering one just jumps to it."""
+        if not self.actionShow_Debug_Panel.isChecked():
+            self.actionShow_Debug_Panel.setChecked(True)
+        self.debug_tabs.setCurrentWidget(widget)
 
     def reset_to_default_layout(self):
-        """Escape hatch for Settings > Layout > Reset, in case a restored
-        or user-arranged layout gets into an unusable state."""
-        for dock in self.docks.values():
-            self.removeDockWidget(dock)
-        for key, dock in self.docks.items():
-            area = Qt.BottomDockWidgetArea if key == "output" else Qt.RightDockWidgetArea
-            self.addDockWidget(area, dock)
-        self._setup_default_layout()
-        # _setup_default_layout() only calls setChecked(True) on the
-        # show-actions, which is a no-op if an action was already checked
-        # before this reset (Qt doesn't re-emit toggled for an unchanged
-        # state) -- so drive visibility directly instead of depending on
-        # that signal chain having something to react to.
-        visible_by_default = {"registers", "disassembly", "memory"}
-        for key, dock in self.docks.items():
-            dock.setVisible(key in visible_by_default)
+        """Escape hatch for Settings > Layout > Reset, in case a dragged
+        split or a hidden panel gets into an unusable state."""
+        self.actionShow_Debug_Panel.setChecked(True)
+        self._apply_default_split()
+        self.debug_tabs.setCurrentWidget(self.register_widget)
         self.statusbar.showMessage("Layout reset to defaults.", 2000)
 
     def _upgrade_editor(self):
@@ -688,6 +661,17 @@ class MainWindow(QMainWindow):
         self.app_settings.save_window_state(self)
         super().closeEvent(event)
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        if not self._did_initial_split:
+            # Deferred to first real show rather than done in __init__:
+            # before the window is actually shown, the splitter hasn't been
+            # laid out yet, so height()-based math there produced a
+            # nonsense ratio (the original bug behind this whole redesign
+            # request was panels not sized sensibly).
+            self._did_initial_split = True
+            self._apply_default_split()
+
     def undo(self):
         self.statusbar.showMessage("Undo triggered", 1000)
         self.editor.undo()
@@ -730,17 +714,8 @@ class MainWindow(QMainWindow):
         self.statusbar.showMessage(f"Status bar toggled: {checked}", 1000)
         self.statusbar.setVisible(checked)
 
-    def on_show_registers_toggled(self, checked):
-        """Show or hide the register dock when the menu action is toggled."""
-        self.statusbar.showMessage(f"Registers window toggled: {checked}", 1000)
-        self.register_dock.setVisible(checked)
-
-    def toggle_memory(self, checked):
-        self.statusbar.showMessage(f"Memory view toggled: {checked}", 1000)
-        self.memory_dock.setVisible(checked)
-
     def append_output(self, text):
-        """Log a line to the Output console dock (visible via View > Show Output)."""
+        """Log a line to the Output tab (visible via View > Show Output)."""
         self.output_console.appendPlainText(text)
 
     def zoom_in(self):
@@ -763,7 +738,7 @@ class MainWindow(QMainWindow):
         self.editor.setFont(font)
 
     def update_register_display(self, reg_values=None, pc=None, inst=None, steps=None):
-        """Update register dock, PC, and current instruction."""
+        """Update the Registers tab, PC, and current instruction."""
         if not self.program_loaded:
             return
 
@@ -992,6 +967,7 @@ class MainWindow(QMainWindow):
         addr = int(item.text(), 16)
         self.disasm_widget.go_to_address(addr)
         self.memory_widget.go_to_address(addr)
+        self.show_debug_tab(self.disasm_widget)
 
     def step(self):
         if not self.program_loaded:
@@ -1073,14 +1049,10 @@ class MainWindow(QMainWindow):
             self.statusbar.showMessage(f"Step Out error: {e}", 5000)
 
     def show_simulator(self):
-        """Open the full debugging layout in one click: registers,
-        disassembly, memory, stack, and PC history."""
-        for action in (self.actionShow_Registers, self.actionShow_Disassembly,
-                       self.actionShow_Memory, self.actionShow_Stack,
-                       self.actionShow_PC_History):
-            action.setChecked(True)
-        self.disasm_dock.raise_()
-        self.statusbar.showMessage("Simulator views shown.", 2000)
+        """F8: reveal the debug panel and jump to Disassembly -- the most
+        useful tab to land on when starting to step through a program."""
+        self.show_debug_tab(self.disasm_widget)
+        self.statusbar.showMessage("Debug panel shown.", 2000)
 
     def settings(self):
         dialog = SettingsDialog(self, self)

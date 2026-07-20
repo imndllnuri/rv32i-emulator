@@ -1,5 +1,5 @@
-"""Regression tests for gui/settings.py + the Settings dialog + dock-layout
-persistence added in the Phase 4 roadmap work. QSettings storage is
+"""Regression tests for gui/settings.py + the Settings dialog + debug-panel
+layout persistence added in the Phase 4 roadmap work. QSettings storage is
 redirected to a per-test temp dir by the autouse isolate_qsettings fixture
 in tests/conftest.py.
 """
@@ -64,16 +64,32 @@ def test_settings_dialog_changes_font_live(qtbot):
     assert window.app_settings.editor_font_size() == 22
 
 
-def test_reset_to_default_layout_shows_and_hides_expected_docks(qtbot):
+def test_reset_to_default_layout_shows_panel_on_registers_tab(qtbot):
     window = MainWindow()
     qtbot.addWidget(window)
     window.show()
 
+    # Hide the panel and switch to a non-default tab first, so the reset is
+    # actually exercised rather than trivially already true.
+    window.actionShow_Debug_Panel.setChecked(False)
+    window.debug_tabs.setCurrentWidget(window.output_console)
+
     window.reset_to_default_layout()
 
-    assert window.register_dock.isVisible()
-    assert window.disasm_dock.isVisible()
-    assert window.memory_dock.isVisible()
-    assert not window.stack_dock.isVisible()
-    assert not window.pc_history_dock.isVisible()
-    assert not window.output_dock.isVisible()
+    assert window.debug_tabs.isVisible()
+    assert window.debug_tabs.currentWidget() is window.register_widget
+    assert window.main_splitter.sizes()[1] > 0
+
+
+def test_show_debug_tab_reveals_panel_when_hidden(qtbot):
+    window = MainWindow()
+    qtbot.addWidget(window)
+    window.show()
+    window.actionShow_Debug_Panel.setChecked(False)
+    assert not window.debug_tabs.isVisible()
+
+    window.show_debug_tab(window.memory_widget)
+
+    assert window.debug_tabs.isVisible()
+    assert window.debug_tabs.currentWidget() is window.memory_widget
+    assert window.actionShow_Debug_Panel.isChecked()
