@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/) (see
   iterative/recursive, gcd, array sum/max/reverse, bubble sort, string
   length, multiplication table, bitwise ops, popcount, CSR scratch demo),
   plus `assembler/README.md` indexing all of them with expected results.
+- An **Examples** menu in the GUI listing every bundled `.s` file — click
+  one to load it straight into the editor (no more manually browsing to
+  `assembler/` via File > Open). Hovering an entry shows a one-line
+  description in the status bar. The AppImage now bundles `assembler/`'s
+  `.s` sources so this menu isn't empty in packaged builds.
 
 ### Fixed
 - GUI's Assemble step used `-march=rv32im`, which modern binutils rejects

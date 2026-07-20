@@ -26,17 +26,22 @@ if [[ ! -f vendor/toolchain/linux-x64/bin/riscv-none-elf-as ]]; then
   python3 scripts/fetch_toolchain.py --platform linux-x64
 fi
 
-echo "==> Staging payload (gui/, core/build/, vendor/toolchain/, VERSION)"
+echo "==> Staging payload (gui/, core/build/, vendor/toolchain/, assembler/, VERSION)"
 STAGE_DIR="$(mktemp -d)"
 trap 'rm -rf "$STAGE_DIR"' EXIT
 
-mkdir -p "$STAGE_DIR/gui" "$STAGE_DIR/core/build" "$STAGE_DIR/vendor/toolchain"
+mkdir -p "$STAGE_DIR/gui" "$STAGE_DIR/core/build" "$STAGE_DIR/vendor/toolchain" "$STAGE_DIR/assembler"
 cp -r gui/. "$STAGE_DIR/gui/"
 cp -r core/build/. "$STAGE_DIR/core/build/"
 cp -r vendor/toolchain/. "$STAGE_DIR/vendor/toolchain/"
 # Sibling of gui/ so _app_version()'s os.path.dirname(__file__)/../VERSION
 # resolves the same way inside the AppImage as it does from a normal checkout.
 cp VERSION "$STAGE_DIR/VERSION"
+# Sibling of gui/ so EXAMPLES_DIR (gui/main_window.py) resolves the same way
+# inside the AppImage as it does from a normal checkout -- without this the
+# Examples menu would be empty in packaged builds. Only ship the .s sources,
+# not README.md or any stray build artifacts.
+cp assembler/*.s "$STAGE_DIR/assembler/"
 
 echo "==> Syncing recipe metadata"
 cp requirements.txt "$RECIPE_DIR/requirements.txt"
@@ -49,7 +54,7 @@ python3 -m python_appimage build app \
   "$RECIPE_DIR" \
   -p "$PYTHON_VERSION" \
   -n rv32i-emulator \
-  -x "$STAGE_DIR/gui" "$STAGE_DIR/core" "$STAGE_DIR/vendor" "$STAGE_DIR/VERSION"
+  -x "$STAGE_DIR/gui" "$STAGE_DIR/core" "$STAGE_DIR/vendor" "$STAGE_DIR/assembler" "$STAGE_DIR/VERSION"
 
 mkdir -p dist
 mv rv32i-emulator-*.AppImage dist/

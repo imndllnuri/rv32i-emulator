@@ -66,6 +66,29 @@ def _app_version():
         return "unknown"
 
 
+EXAMPLES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assembler"))
+
+# Short blurbs shown as tooltip/status-bar text for each bundled example
+# (assembler/README.md has the full table); anything found in EXAMPLES_DIR
+# without an entry here still shows up in the menu, just without a blurb.
+EXAMPLE_DESCRIPTIONS = {
+    "test_sum.s": "Loop with add/ble branch. Result: t0 = sum of 1..10 = 55",
+    "fibonacci.s": "Iterative Fibonacci. Result: t1 = fib(10) = 55",
+    "factorial_iterative.s": "Iterative factorial with mul (RV32M). Result: t0 = 7! = 5040",
+    "factorial_recursive.s": "Recursive factorial via jal/ret and a stack frame. Result: a0 = 6! = 720",
+    "gcd.s": "Euclidean algorithm using rem (RV32M). Result: t0 = gcd(48, 18) = 6",
+    "array_sum.s": "Builds an array with sw, sums it with indexed lw. Result: a0 = 150",
+    "array_max.s": "Linear scan for the maximum element. Result: a0 = 99",
+    "array_reverse.s": "Two-pointer in-place array reverse. Result: mem[0x4000..0x4014) = 5,4,3,2,1",
+    "bubble_sort.s": "Bubble sort with a swap-flag early exit. Result: mem[0x4000..0x4014) = 1,2,3,4,5",
+    "string_length.s": 'Byte loads/stores (lb/sb) and a NUL scan. Result: a1 = 3 (length of "Hi!")',
+    "multiplication_table.s": "Nested loops building a 5x5 multiplication table. Result: a0 = table[4][4] = 25",
+    "bitwise_ops.s": "and/or/xor plus logical vs. arithmetic shifts. See comments in the file.",
+    "count_set_bits.s": "Bit-at-a-time popcount. Result: a0 = 16",
+    "csr_scratch.s": "csrrw/csrrs/csrrc/csrrwi using mscratch as scratch storage. See comments in the file.",
+}
+
+
 def _vendored_toolchain_dir():
     """The platform-specific vendor/toolchain/<platform>/bin/ produced by
     scripts/fetch_toolchain.py -- matches that script's platform-key logic."""
@@ -428,6 +451,7 @@ class MainWindow(QMainWindow):
         self.app_settings.restore_window_state(self)
         self._setup_icons()
         self._update_action_states()
+        self._populate_examples_menu()
 
     def _setup_default_layout(self):
         """Arrange the docks into something usable on first launch instead
@@ -582,6 +606,34 @@ class MainWindow(QMainWindow):
             self._reset_program_state()
         except Exception as e:
             self.statusbar.showMessage(f"Error opening file: {str(e)}", 5000)
+
+    def _populate_examples_menu(self):
+        """Fills the Examples menu with every .s file bundled in
+        assembler/, so they're one click away instead of needing File >
+        Open and a manual path. The list is fixed for the life of the
+        window (built once here), since the bundled examples don't change
+        while the app is running."""
+        self.menuExamples.clear()
+        try:
+            files = sorted(f for f in os.listdir(EXAMPLES_DIR) if f.endswith(".s"))
+        except OSError:
+            files = []
+
+        if not files:
+            action = self.menuExamples.addAction("No examples found")
+            action.setEnabled(False)
+            return
+
+        for filename in files:
+            action = self.menuExamples.addAction(filename)
+            description = EXAMPLE_DESCRIPTIONS.get(filename, "")
+            if description:
+                action.setToolTip(description)
+                action.setStatusTip(description)
+                action.setWhatsThis(description)
+            action.triggered.connect(
+                lambda checked=False, p=os.path.join(EXAMPLES_DIR, filename): self.open_path(p)
+            )
 
     def save_file(self):
         self.statusbar.showMessage("Save file triggered", 1000)
