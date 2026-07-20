@@ -85,11 +85,10 @@ def test_open_path_loads_file_and_updates_title(window, tmp_path):
     assert window.windowTitle() == "prog.s - rv32i-emulator"
 
 
-def test_dock_registry_has_stable_object_names(window):
-    expected = {"registers", "memory", "disassembly", "stack", "pc_history", "output"}
-    assert set(window.docks.keys()) == expected
-    for key, dock in window.docks.items():
-        assert dock.objectName() == f"dock_{key}"
+def test_debug_panel_has_expected_tabs(window):
+    expected = {"Registers", "Memory", "Disassembly", "Stack", "PC History", "Output"}
+    titles = {window.debug_tabs.tabText(i) for i in range(window.debug_tabs.count())}
+    assert titles == expected
 
 
 def test_whats_this_toolbar_action_exists(window):

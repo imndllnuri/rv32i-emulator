@@ -19,6 +19,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/) (see
   description in the status bar. The AppImage now bundles `assembler/`'s
   `.s` sources so this menu isn't empty in packaged builds.
 
+### Changed
+- **Replaced the six floating/dockable debug views (Registers, Memory,
+  Disassembly, Stack, PC History, Output) with a single tabbed panel**
+  below the editor, split by a draggable handle (default ~60/40). The old
+  multi-dock layout could spill panels off screen or balloon to fill the
+  whole window when maximized, with no easy way to get it back under
+  control; now only one view is visible at a time, at a size you choose.
+  `View > Show Debug Panel` collapses/reopens the panel entirely; the
+  per-view `View > Show X` actions now jump to that tab instead of
+  toggling a dock. `Settings > Layout > Reset to Default Layout` restores
+  the default split. The app also no longer reopens maximized just because
+  a previous session was closed that way.
+
 ### Fixed
 - GUI's Assemble step used `-march=rv32im`, which modern binutils rejects
   for any CSR instruction (`extension 'zicsr' required`) — CSR support was
